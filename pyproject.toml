@@ -1,2 +1,2 @@
 [tool.vercel]
-entrypoint = "restaurant.backend.app:app
+entrypoints = "restaurant.backend.app:app
