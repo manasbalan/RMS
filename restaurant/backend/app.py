@@ -1,22 +1,33 @@
-from flask import Flask, jsonify, request, send_from_directory
-from flask_cors import CORS
-import sqlite3
 import os
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
-# Enable CORS so frontend (HTML/JS) can call endpoints seamlessly
-CORS(app)
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-FRONTEND_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "frontend"))
-DB_FILE = os.path.join(BASE_DIR, "restaurant.db")
+DB_USER = os.environ.get("DB_USER")
+DB_PASSWORD = os.environ.get("DB_PASSWORD")
+DB_HOST = os.environ.get("DB_HOST")
+DB_PORT = os.environ.get("DB_PORT", "3306")
+DB_NAME = os.environ.get("DB_NAME")
 
+app.config['SQLALCHEMY_DATABASE_URI'] = (
+    f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+)
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    "connect_args": {
+        "ssl": {"ssl_mode": "REQUIRED"}
+    }
+}
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-def get_db_connection():
-    conn = sqlite3.connect(DB_FILE)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    return conn
+db = SQLAlchemy(app)
+Check requirements.txt:
+Ensure that pymysql and cryptography are listed in your requirements.txt file in your repository so Vercel installs them during build time.
+
+Redeploy:
+Go to your Deployments tab on Vercel, click the three dots (...) on your latest deployment, and click Redeploy.
+
+Once it finishes building, your app will successfully link to your Aiven MySQL database and load your pages without any 500 errors!
 
 
 def init_db(force_reseed=False):
