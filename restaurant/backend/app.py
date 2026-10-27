@@ -473,7 +473,9 @@ def init_db(force_reseed=False):
 
 
 # 1. EXECUTIVE DASHBOARD STATS
-@app.route("/api/stats", methods=["GET"])
+@app.route("/")
+def index():
+    return send_from_directory(FRONTEND_DIR, "index.html")
 def get_stats():
     conn = get_db_connection()
     cursor = conn.cursor()
