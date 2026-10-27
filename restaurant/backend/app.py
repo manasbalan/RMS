@@ -1,33 +1,108 @@
+from flask import Flask, jsonify, request, send_from_directory
+from flask_cors import CORS
+import sqlite3
 import os
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
+import pymysql
 
 app = Flask(__name__)
+# Enable CORS so frontend (HTML/JS) can call endpoints seamlessly
+CORS(app)
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+FRONTEND_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "frontend"))
+
+# Check if MySQL environment variables are set (for Vercel/Cloud deployment), otherwise fallback to local SQLite
+DB_HOST = os.environ.get("DB_HOST")
 DB_USER = os.environ.get("DB_USER")
 DB_PASSWORD = os.environ.get("DB_PASSWORD")
-DB_HOST = os.environ.get("DB_HOST")
-DB_PORT = os.environ.get("DB_PORT", "3306")
 DB_NAME = os.environ.get("DB_NAME")
+DB_PORT = int(os.environ.get("DB_PORT", 3306))
 
-app.config['SQLALCHEMY_DATABASE_URI'] = (
-    f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-)
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-    "connect_args": {
-        "ssl": {"ssl_mode": "REQUIRED"}
-    }
-}
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+USE_MYSQL = bool(DB_HOST and DB_USER and DB_NAME)
 
-db = SQLAlchemy(app)
-Check requirements.txt:
-Ensure that pymysql and cryptography are listed in your requirements.txt file in your repository so Vercel installs them during build time.
+if not USE_MYSQL:
+    DB_FILE = os.path.join(BASE_DIR, "restaurant.db")
 
-Redeploy:
-Go to your Deployments tab on Vercel, click the three dots (...) on your latest deployment, and click Redeploy.
 
-Once it finishes building, your app will successfully link to your Aiven MySQL database and load your pages without any 500 errors!
+class MySQLCursorWrapper:
+    """Wrapper to emulate sqlite3.Row functionality for PyMySQL dictionaries."""
+    def __init__(self, cursor):
+        self.cursor = cursor
+
+    def execute(self, query, params=None):
+        formatted_query = query.replace('?', '%s')
+        if params is not None:
+            self.cursor.execute(formatted_query, params)
+        else:
+            self.cursor.execute(formatted_query)
+        return self
+
+    def fetchone(self):
+        row = self.cursor.fetchone()
+        if row is None:
+            return None
+        return DictRow(row)
+
+    def fetchall(self):
+        rows = self.cursor.fetchall()
+        return [DictRow(r) for r in rows]
+
+    @property
+    def lastrowid(self):
+        return self.cursor.lastrowid
+
+
+class DictRow(dict):
+    """Dictionary subclass that allows accessing columns by attribute or index."""
+    def __init__(self, mapping):
+        super().__init__(mapping)
+
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            keys = list(self.keys())
+            return super().__getitem__(keys[key])
+        return super().__getitem__(key)
+
+
+class MySQLConnectionWrapper:
+    """Wrapper to emulate sqlite3 connection behavior using PyMySQL."""
+    def __init__(self, conn):
+        self.conn = conn
+
+    def cursor(self):
+        return MySQLCursorWrapper(self.conn.cursor(pymysql.cursors.DictCursor))
+
+    def execute(self, query, params=None):
+        cursor = self.cursor()
+        cursor.execute(query, params)
+        return cursor
+
+    def commit(self):
+        self.conn.commit()
+
+    def close(self):
+        self.conn.close()
+
+
+def get_db_connection():
+    if USE_MYSQL:
+        ssl_args = {"ssl": {"ssl_mode": "REQUIRED"}} if "aivencloud.com" in DB_HOST else {}
+        conn = pymysql.connect(
+            host=DB_HOST,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            database=DB_NAME,
+            port=DB_PORT,
+            charset='utf8mb4',
+            cursorclass=pymysql.cursors.DictCursor,
+            **ssl_args
+        )
+        return MySQLConnectionWrapper(conn)
+    else:
+        conn = sqlite3.connect(DB_FILE)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON")
+        return conn
 
 
 def init_db(force_reseed=False):
@@ -36,157 +111,268 @@ def init_db(force_reseed=False):
     cursor = conn.cursor()
 
     if force_reseed:
-        cursor.execute("DROP TABLE IF EXISTS order_items")
-        cursor.execute("DROP TABLE IF EXISTS bills")
-        cursor.execute("DROP TABLE IF EXISTS orders")
-        cursor.execute("DROP TABLE IF EXISTS menu_items")
-        cursor.execute("DROP TABLE IF EXISTS categories")
-        cursor.execute("DROP TABLE IF EXISTS inventory")
-        cursor.execute("DROP TABLE IF EXISTS suppliers")
-        cursor.execute("DROP TABLE IF EXISTS staff")
-        cursor.execute("DROP TABLE IF EXISTS feedback")
-        cursor.execute("DROP TABLE IF EXISTS customers")
-        cursor.execute("DROP TABLE IF EXISTS tables")
+        if USE_MYSQL:
+            cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
+            cursor.execute("DROP TABLE IF EXISTS order_items")
+            cursor.execute("DROP TABLE IF EXISTS bills")
+            cursor.execute("DROP TABLE IF EXISTS orders")
+            cursor.execute("DROP TABLE IF EXISTS menu_items")
+            cursor.execute("DROP TABLE IF EXISTS categories")
+            cursor.execute("DROP TABLE IF EXISTS inventory")
+            cursor.execute("DROP TABLE IF EXISTS suppliers")
+            cursor.execute("DROP TABLE IF EXISTS staff")
+            cursor.execute("DROP TABLE IF EXISTS feedback")
+            cursor.execute("DROP TABLE IF EXISTS customers")
+            cursor.execute("DROP TABLE IF EXISTS tables")
+            cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
+        else:
+            cursor.execute("DROP TABLE IF EXISTS order_items")
+            cursor.execute("DROP TABLE IF EXISTS bills")
+            cursor.execute("DROP TABLE IF EXISTS orders")
+            cursor.execute("DROP TABLE IF EXISTS menu_items")
+            cursor.execute("DROP TABLE IF EXISTS categories")
+            cursor.execute("DROP TABLE IF EXISTS inventory")
+            cursor.execute("DROP TABLE IF EXISTS suppliers")
+            cursor.execute("DROP TABLE IF EXISTS staff")
+            cursor.execute("DROP TABLE IF EXISTS feedback")
+            cursor.execute("DROP TABLE IF EXISTS customers")
+            cursor.execute("DROP TABLE IF EXISTS tables")
 
-    # 1. Categories Table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS categories (
-            category_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL UNIQUE,
-            icon TEXT
-        );
-    """)
+    if USE_MYSQL:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS categories (
+                category_id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL UNIQUE,
+                icon VARCHAR(255)
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS menu_items (
+                item_id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                description TEXT,
+                price DECIMAL(10,2) NOT NULL,
+                image_url TEXT,
+                category_id INT,
+                FOREIGN KEY (category_id) REFERENCES categories (category_id) ON DELETE CASCADE
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS tables (
+                table_id INT AUTO_INCREMENT PRIMARY KEY,
+                table_number VARCHAR(50) NOT NULL UNIQUE,
+                capacity INT NOT NULL,
+                status VARCHAR(50) NOT NULL CHECK(status IN ('available', 'occupied', 'reserved')),
+                floor_area VARCHAR(100) DEFAULT 'Main Dining Hall'
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS customers (
+                customer_id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                phone VARCHAR(50) NOT NULL,
+                email VARCHAR(255),
+                address TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS orders (
+                order_id INT AUTO_INCREMENT PRIMARY KEY,
+                customer_name VARCHAR(255),
+                table_number VARCHAR(50) DEFAULT 'Table 1',
+                total_amount DECIMAL(10,2) NOT NULL,
+                status VARCHAR(50) NOT NULL CHECK(status IN ('incoming', 'preparing', 'delivered')),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS order_items (
+                order_item_id INT AUTO_INCREMENT PRIMARY KEY,
+                order_id INT NOT NULL,
+                item_id INT NOT NULL,
+                quantity INT NOT NULL,
+                unit_price DECIMAL(10,2) NOT NULL,
+                FOREIGN KEY (order_id) REFERENCES orders (order_id) ON DELETE CASCADE,
+                FOREIGN KEY (item_id) REFERENCES menu_items (item_id) ON DELETE CASCADE
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS bills (
+                bill_id INT AUTO_INCREMENT PRIMARY KEY,
+                order_id INT NOT NULL,
+                customer_name VARCHAR(255),
+                subtotal DECIMAL(10,2) NOT NULL,
+                tax DECIMAL(10,2) NOT NULL,
+                discount DECIMAL(10,2) NOT NULL,
+                grand_total DECIMAL(10,2) NOT NULL,
+                payment_method VARCHAR(100) NOT NULL,
+                payment_status VARCHAR(50) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (order_id) REFERENCES orders (order_id) ON DELETE CASCADE
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS staff (
+                staff_id INT AUTO_INCREMENT PRIMARY KEY,
+                full_name VARCHAR(255) NOT NULL,
+                role VARCHAR(100) NOT NULL,
+                phone VARCHAR(50),
+                salary DECIMAL(10,2) NOT NULL,
+                joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS feedback (
+                feedback_id INT AUTO_INCREMENT PRIMARY KEY,
+                customer_name VARCHAR(255),
+                rating INT NOT NULL,
+                comments TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS suppliers (
+                supplier_id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                contact_person VARCHAR(255),
+                phone VARCHAR(50) NOT NULL,
+                email VARCHAR(255),
+                address TEXT
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS inventory (
+                inventory_id INT AUTO_INCREMENT PRIMARY KEY,
+                item_name VARCHAR(255) NOT NULL,
+                quantity INT NOT NULL,
+                unit VARCHAR(50) NOT NULL,
+                reorder_level INT NOT NULL,
+                supplier_id INT,
+                FOREIGN KEY (supplier_id) REFERENCES suppliers (supplier_id) ON DELETE SET NULL
+            );
+        """)
+    else:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS categories (
+                category_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                icon TEXT
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS menu_items (
+                item_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                description TEXT,
+                price REAL NOT NULL,
+                image_url TEXT,
+                category_id INTEGER,
+                FOREIGN KEY (category_id) REFERENCES categories (category_id) ON DELETE CASCADE
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS tables (
+                table_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                table_number TEXT NOT NULL UNIQUE,
+                capacity INTEGER NOT NULL,
+                status TEXT NOT NULL CHECK(status IN ('available', 'occupied', 'reserved')),
+                floor_area TEXT DEFAULT 'Main Dining Hall'
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS customers (
+                customer_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                phone TEXT NOT NULL,
+                email TEXT,
+                address TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS orders (
+                order_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                customer_name TEXT,
+                table_number TEXT DEFAULT 'Table 1',
+                total_amount REAL NOT NULL,
+                status TEXT NOT NULL CHECK(status IN ('incoming', 'preparing', 'delivered')),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS order_items (
+                order_item_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                order_id INTEGER NOT NULL,
+                item_id INTEGER NOT NULL,
+                quantity INTEGER NOT NULL,
+                unit_price REAL NOT NULL,
+                FOREIGN KEY (order_id) REFERENCES orders (order_id) ON DELETE CASCADE,
+                FOREIGN KEY (item_id) REFERENCES menu_items (item_id) ON DELETE CASCADE
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS bills (
+                bill_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                order_id INTEGER NOT NULL,
+                customer_name TEXT,
+                subtotal REAL NOT NULL,
+                tax REAL NOT NULL,
+                discount REAL NOT NULL,
+                grand_total REAL NOT NULL,
+                payment_method TEXT NOT NULL,
+                payment_status TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (order_id) REFERENCES orders (order_id) ON DELETE CASCADE
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS staff (
+                staff_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                full_name TEXT NOT NULL,
+                role TEXT NOT NULL,
+                phone TEXT,
+                salary REAL NOT NULL,
+                joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS feedback (
+                feedback_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                customer_name TEXT,
+                rating INTEGER NOT NULL,
+                comments TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS suppliers (
+                supplier_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                contact_person TEXT,
+                phone TEXT NOT NULL,
+                email TEXT,
+                address TEXT
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS inventory (
+                inventory_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                item_name TEXT NOT NULL,
+                quantity INTEGER NOT NULL,
+                unit TEXT NOT NULL,
+                reorder_level INTEGER NOT NULL,
+                supplier_id INTEGER,
+                FOREIGN KEY (supplier_id) REFERENCES suppliers (supplier_id) ON DELETE SET NULL
+            );
+        """)
 
-    # 2. Menu Items Table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS menu_items (
-            item_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            description TEXT,
-            price REAL NOT NULL,
-            image_url TEXT,
-            category_id INTEGER,
-            FOREIGN KEY (category_id) REFERENCES categories (category_id) ON DELETE CASCADE
-        );
-    """)
-
-    # 3. Tables / Floor Map Table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS tables (
-            table_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            table_number TEXT NOT NULL UNIQUE,
-            capacity INTEGER NOT NULL,
-            status TEXT NOT NULL CHECK(status IN ('available', 'occupied', 'reserved')),
-            floor_area TEXT DEFAULT 'Main Dining Hall'
-        );
-    """)
-
-    # 4. Customers Table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS customers (
-            customer_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            phone TEXT NOT NULL,
-            email TEXT,
-            address TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-    """)
-
-    # 5. Orders Table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS orders (
-            order_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            customer_name TEXT,
-            table_number TEXT DEFAULT 'Table 1',
-            total_amount REAL NOT NULL,
-            status TEXT NOT NULL CHECK(status IN ('incoming', 'preparing', 'delivered')),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-    """)
-
-    # 6. Order Items Table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS order_items (
-            order_item_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            order_id INTEGER NOT NULL,
-            item_id INTEGER NOT NULL,
-            quantity INTEGER NOT NULL,
-            unit_price REAL NOT NULL,
-            FOREIGN KEY (order_id) REFERENCES orders (order_id) ON DELETE CASCADE,
-            FOREIGN KEY (item_id) REFERENCES menu_items (item_id) ON DELETE CASCADE
-        );
-    """)
-
-    # 7. Bills / Invoices Table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS bills (
-            bill_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            order_id INTEGER NOT NULL,
-            customer_name TEXT,
-            subtotal REAL NOT NULL,
-            tax REAL NOT NULL,
-            discount REAL NOT NULL,
-            grand_total REAL NOT NULL,
-            payment_method TEXT NOT NULL,
-            payment_status TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (order_id) REFERENCES orders (order_id) ON DELETE CASCADE
-        );
-    """)
-
-    # 8. Staff / Employees Table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS staff (
-            staff_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            full_name TEXT NOT NULL,
-            role TEXT NOT NULL,
-            phone TEXT,
-            salary REAL NOT NULL,
-            joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-    """)
-
-    # 9. Feedback Table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS feedback (
-            feedback_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            customer_name TEXT,
-            rating INTEGER NOT NULL,
-            comments TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-    """)
-
-    # 10. Suppliers Table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS suppliers (
-            supplier_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            contact_person TEXT,
-            phone TEXT NOT NULL,
-            email TEXT,
-            address TEXT
-        );
-    """)
-
-    # 11. Inventory Table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS inventory (
-            inventory_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            item_name TEXT NOT NULL,
-            quantity INTEGER NOT NULL,
-            unit TEXT NOT NULL,
-            reorder_level INTEGER NOT NULL,
-            supplier_id INTEGER,
-            FOREIGN KEY (supplier_id) REFERENCES suppliers (supplier_id) ON DELETE SET NULL
-        );
-    """)
-
-    # Check if we need to migrate/reseed with authentic Kerala Cuisine data
-    check_kerala = cursor.execute("SELECT COUNT(*) FROM menu_items WHERE name LIKE '%Biriyani%' OR name LIKE '%Porotta%'").fetchone()[0]
-    if force_reseed or check_kerala == 0:
-        # Clear existing demo data to ensure consistent Kerala cuisine dataset
+    check_kerala = cursor.execute("SELECT COUNT(*) FROM menu_items WHERE name LIKE '%Biriyani%' OR name LIKE '%Porotta%'").fetchone()
+    check_kerala_count = list(check_kerala.values())[0] if isinstance(check_kerala, dict) else check_kerala[0]
+    
+    if force_reseed or check_kerala_count == 0:
+        if USE_MYSQL:
+            cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
         cursor.execute("DELETE FROM order_items")
         cursor.execute("DELETE FROM bills")
         cursor.execute("DELETE FROM orders")
@@ -198,8 +384,9 @@ def init_db(force_reseed=False):
         cursor.execute("DELETE FROM feedback")
         cursor.execute("DELETE FROM customers")
         cursor.execute("DELETE FROM tables")
+        if USE_MYSQL:
+            cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
 
-        # 1. Categories Seed (Breakfast, Afternoon, Evening Snacks, Drinks & Desserts)
         categories_data = [
             ("Breakfast", "🌅"),
             ("Afternoon Meals & Biriyani", "🍛"),
@@ -208,149 +395,31 @@ def init_db(force_reseed=False):
         ]
         cursor.executemany("INSERT INTO categories (name, icon) VALUES (?, ?)", categories_data)
 
-        # 2. Kerala Menu Items Seed
-        # Category 1 = Breakfast, Category 2 = Afternoon/Lunch, Category 3 = Evening Snacks, Category 4 = Drinks & Desserts
         kerala_items = [
-            # --- BREAKFAST ---
-            (
-                "Kerala Puttu & Kadala Curry",
-                "Steamed cylindrical rice cakes layered with grated coconut, served with rich spicy black chickpea curry.",
-                80.00,
-                "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=400&q=80",
-                1
-            ),
-            (
-                "Malabar Porotta with Beef Roast",
-                "Multi-layered crispy flaky Malabar flatbread paired with tender slow-roasted Kerala spiced beef roast.",
-                140.00,
-                "https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?auto=format&fit=crop&w=400&q=80",
-                1
-            ),
-            (
-                "Appam with Chicken Stew",
-                "Soft, fluffy fermented rice hoppers with crispy lacy borders, paired with rich coconut milk chicken stew.",
-                110.00,
-                "https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&w=400&q=80",
-                1
-            ),
-            (
-                "Crispy Ghee Roast Dosa",
-                "Golden thin crepe roasted in pure desi ghee, served with hot Kerala vegetable sambar and coconut chutney.",
-                75.00,
-                "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=400&q=80",
-                1
-            ),
-            (
-                "Idiyappam with Coconut Milk",
-                "Delicate steamed rice string hoppers served with sweet cardamom-infused coconut milk and vegetable kurma.",
-                70.00,
-                "https://images.unsplash.com/photo-1610192244261-3f33de3f55e4?auto=format&fit=crop&w=400&q=80",
-                1
-            ),
-
-            # --- AFTERNOON MEALS & BIRIYANI ---
-            (
-                "Thalassery Chicken Biriyani",
-                "Authentic Malabar Dum Biriyani cooked with aromatic Jeerakasala/Kaima rice, tender spiced chicken, fried onions, cashews, raisins, and raita.",
-                190.00,
-                "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?auto=format&fit=crop&w=400&q=80",
-                2
-            ),
-            (
-                "Arabian Chicken Kuzhi Mandi",
-                "Smoky coal-cooked authentic Mandi rice with succulent spiced chicken quarter, fresh tomato sahawiq salsa, and garlic toum.",
-                220.00,
-                "https://images.unsplash.com/photo-1633945274405-b6c8069047b0?auto=format&fit=crop&w=400&q=80",
-                2
-            ),
-            (
-                "Kerala Traditional Sadhya Oonu",
-                "Steamed Kerala Matta red rice served with Sambar, Avial, Thoran, Pulissery, Mango Pickle, Crispy Pappadam and Payasam on banana leaf.",
-                120.00,
-                "https://images.unsplash.com/photo-1610057099443-fde8c4d50f91?auto=format&fit=crop&w=400&q=80",
-                2
-            ),
-            (
-                "Karimeen Pollichathu Fish Meals",
-                "Fresh pearl spot fish marinated in shallot-chilli masala, wrapped and slow-tava roasted in fresh banana leaves, with Matta rice.",
-                260.00,
-                "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=400&q=80",
-                2
-            ),
-            (
-                "Kuttanadan Duck Roast & Ghee Rice",
-                "Rich peppery duck roast prepared with coconut slivers and Kuttanad spices, served with fragrant Kerala Nei Choru.",
-                210.00,
-                "https://images.unsplash.com/photo-1546833999-b9f581a1996d?auto=format&fit=crop&w=400&q=80",
-                2
-            ),
-
-            # --- EVENING SNACKS ---
-            (
-                "Pazham Pori & Malabar Beef Fry",
-                "Sweet golden Kerala ripe plantain fritters served classic Malabar street-food style alongside spicy pepper beef roast.",
-                65.00,
-                "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=400&q=80",
-                3
-            ),
-            (
-                "Parippu Vada & Sukhiyan Combo",
-                "Two crunchy spiced chana dal vadas and sweet golden jaggery green-gram dumplings served hot with green chillies.",
-                35.00,
-                "https://images.unsplash.com/photo-1541518763669-27fef04b14ea?auto=format&fit=crop&w=400&q=80",
-                3
-            ),
-            (
-                "Malabar Chicken Kozhi Ada",
-                "Traditional crescent-shaped pastry filled with seasoned shredded chicken masala and fresh herbs, crisped golden brown.",
-                40.00,
-                "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=400&q=80",
-                3
-            ),
-            (
-                "Thalassery Sweet Unnakaya",
-                "Spindle-shaped steamed banana delicacy stuffed with sweetened coconut, scrambled egg, dry fruits, and fragrant cardamom.",
-                40.00,
-                "https://images.unsplash.com/photo-1505253758473-96b3015f21c9?auto=format&fit=crop&w=400&q=80",
-                3
-            ),
-            (
-                "Sulaimani & Cardamom Dum Tea",
-                "Brewed Malabar black tea infused with mint, cloves & fresh lime, served alongside piping-hot frothy cardamom milk tea.",
-                25.00,
-                "https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=400&q=80",
-                3
-            ),
-
-            # --- DRINKS & DESSERTS ---
-            (
-                "Special Kulukki Sarbath",
-                "Signature Kerala shaken iced lemonade with soaked basil seeds (sabja), fresh green chillies, ginger, and mint.",
-                45.00,
-                "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=400&q=80",
-                4
-            ),
-            (
-                "Royal Ada Pradhaman Payasam",
-                "Royal festive dessert simmered with tender rice flakes, dark coconut jaggery, thick coconut milk, and ghee-roasted cashews.",
-                70.00,
-                "https://images.unsplash.com/photo-1587314168485-3236d6710814?auto=format&fit=crop&w=400&q=80",
-                4
-            ),
-            (
-                "Tender Coconut Elaneer Pudding",
-                "Refreshing, velvety chilled pudding prepared from fresh sweet Kerala tender coconut pulp and condensed milk.",
-                75.00,
-                "https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=400&q=80",
-                4
-            )
+            ("Kerala Puttu & Kadala Curry", "Steamed cylindrical rice cakes layered with grated coconut, served with rich spicy black chickpea curry.", 80.00, "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=400&q=80", 1),
+            ("Malabar Porotta with Beef Roast", "Multi-layered crispy flaky Malabar flatbread paired with tender slow-roasted Kerala spiced beef roast.", 140.00, "https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?auto=format&fit=crop&w=400&q=80", 1),
+            ("Appam with Chicken Stew", "Soft, fluffy fermented rice hoppers with crispy lacy borders, paired with rich coconut milk chicken stew.", 110.00, "https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&w=400&q=80", 1),
+            ("Crispy Ghee Roast Dosa", "Golden thin crepe roasted in pure desi ghee, served with hot Kerala vegetable sambar and coconut chutney.", 75.00, "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=400&q=80", 1),
+            ("Idiyappam with Coconut Milk", "Delicate steamed rice string hoppers served with sweet cardamom-infused coconut milk and vegetable kurma.", 70.00, "https://images.unsplash.com/photo-1610192244261-3f33de3f55e4?auto=format&fit=crop&w=400&q=80", 1),
+            ("Thalassery Chicken Biriyani", "Authentic Malabar Dum Biriyani cooked with aromatic Jeerakasala/Kaima rice, tender spiced chicken, fried onions, cashews, raisins, and raita.", 190.00, "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?auto=format&fit=crop&w=400&q=80", 2),
+            ("Arabian Chicken Kuzhi Mandi", "Smoky coal-cooked authentic Mandi rice with succulent spiced chicken quarter, fresh tomato sahawiq salsa, and garlic toum.", 220.00, "https://images.unsplash.com/photo-1633945274405-b6c8069047b0?auto=format&fit=crop&w=400&q=80", 2),
+            ("Kerala Traditional Sadhya Oonu", "Steamed Kerala Matta red rice served with Sambar, Avial, Thoran, Pulissery, Mango Pickle, Crispy Pappadam and Payasam on banana leaf.", 120.00, "https://images.unsplash.com/photo-1610057099443-fde8c4d50f91?auto=format&fit=crop&w=400&q=80", 2),
+            ("Karimeen Pollichathu Fish Meals", "Fresh pearl spot fish marinated in shallot-chilli masala, wrapped and slow-tava roasted in fresh banana leaves, with Matta rice.", 260.00, "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=400&q=80", 2),
+            ("Kuttanadan Duck Roast & Ghee Rice", "Rich peppery duck roast prepared with coconut slivers and Kuttanad spices, served with fragrant Kerala Nei Choru.", 210.00, "https://images.unsplash.com/photo-1546833999-b9f581a1996d?auto=format&fit=crop&w=400&q=80", 2),
+            ("Pazham Pori & Malabar Beef Fry", "Sweet golden Kerala ripe plantain fritters served classic Malabar street-food style alongside spicy pepper beef roast.", 65.00, "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=400&q=80", 3),
+            ("Parippu Vada & Sukhiyan Combo", "Two crunchy spiced chana dal vadas and sweet golden jaggery green-gram dumplings served hot with green chillies.", 35.00, "https://images.unsplash.com/photo-1541518763669-27fef04b14ea?auto=format&fit=crop&w=400&q=80", 3),
+            ("Malabar Chicken Kozhi Ada", "Traditional crescent-shaped pastry filled with seasoned shredded chicken masala and fresh herbs, crisped golden brown.", 40.00, "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=400&q=80", 3),
+            ("Thalassery Sweet Unnakaya", "Spindle-shaped steamed banana delicacy stuffed with sweetened coconut, scrambled egg, dry fruits, and fragrant cardamom.", 40.00, "https://images.unsplash.com/photo-1505253758473-96b3015f21c9?auto=format&fit=crop&w=400&q=80", 3),
+            ("Sulaimani & Cardamom Dum Tea", "Brewed Malabar black tea infused with mint, cloves & fresh lime, served alongside piping-hot frothy cardamom milk tea.", 25.00, "https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=400&q=80", 3),
+            ("Special Kulukki Sarbath", "Signature Kerala shaken iced lemonade with soaked basil seeds (sabja), fresh green chillies, ginger, and mint.", 45.00, "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=400&q=80", 4),
+            ("Royal Ada Pradhaman Payasam", "Royal festive dessert simmered with tender rice flakes, dark coconut jaggery, thick coconut milk, and ghee-roasted cashews.", 70.00, "https://images.unsplash.com/photo-1587314168485-3236d6710814?auto=format&fit=crop&w=400&q=80", 4),
+            ("Tender Coconut Elaneer Pudding", "Refreshing, velvety chilled pudding prepared from fresh sweet Kerala tender coconut pulp and condensed milk.", 75.00, "https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=400&q=80", 4)
         ]
         cursor.executemany("""
             INSERT INTO menu_items (name, description, price, image_url, category_id)
             VALUES (?, ?, ?, ?, ?)
         """, kerala_items)
 
-        # 3. Tables Seed
         tables_data = [
             ("Table 1", 4, "available", "Courtyard Heritage"),
             ("Table 2", 6, "occupied", "Royal Dining Hall"),
@@ -364,7 +433,6 @@ def init_db(force_reseed=False):
             VALUES (?, ?, ?, ?)
         """, tables_data)
 
-        # 4. Customers Seed
         customers_data = [
             ("Dr. Rahul Menon", "98471-88990", "rahul.menon@keralahealth.org", "Menon Villa, Panampilly Nagar, Kochi"),
             ("Amina Basheer", "94462-77112", "amina.basheer@calicutnet.in", "Rose Cottage, Beach Road, Kozhikode"),
@@ -376,7 +444,6 @@ def init_db(force_reseed=False):
             VALUES (?, ?, ?, ?)
         """, customers_data)
 
-        # 5. Suppliers Seed
         suppliers_data = [
             ("Wayanad Jeerakasala Rice Traders", "Haris Rahman", "94471-22334", "orders@wayanadrice.com", "Kalpetta, Wayanad"),
             ("Idukki Spice Valley Co.", "Thomas Joseph", "98470-11223", "spices@idukkiagro.in", "Kumily, Idukki"),
@@ -389,16 +456,15 @@ def init_db(force_reseed=False):
             VALUES (?, ?, ?, ?, ?)
         """, suppliers_data)
 
-        # 6. Inventory Seed
         inventory_data = [
             ("Jeerakasala Kaima Rice", 85, "kg", 25, 1),
             ("Kerala Matta Red Rice", 120, "kg", 30, 1),
             ("Idukki Green Cardamom & Cloves", 14, "kg", 5, 2),
             ("Fresh Chicken Cuts", 38, "kg", 15, 4),
-            ("Fresh Pearl Spot (Karimeen)", 9, "kg", 15, 3),   # Low stock warning
+            ("Fresh Pearl Spot (Karimeen)", 9, "kg", 15, 3),
             ("Pure Desi Ghee", 22, "kg", 10, 5),
             ("Kerala Kera Coconut Oil", 45, "L", 15, 5),
-            ("Ripe Nendran Bananas", 12, "kg", 20, 1),        # Low stock warning
+            ("Ripe Nendran Bananas", 12, "kg", 20, 1),
             ("Black Chickpeas (Kadala)", 30, "kg", 10, 1)
         ]
         cursor.executemany("""
@@ -406,7 +472,6 @@ def init_db(force_reseed=False):
             VALUES (?, ?, ?, ?, ?)
         """, inventory_data)
 
-        # 7. Staff Seed
         staff_data = [
             ("Chef Moideen K.", "Master Malabar Head Chef", "98470-55101", 58000.00),
             ("Chef Sujith Pillai", "Traditional Sadhya & Curry Specialist", "98470-55102", 48000.00),
@@ -419,7 +484,6 @@ def init_db(force_reseed=False):
             VALUES (?, ?, ?, ?)
         """, staff_data)
 
-        # 8. Initial Orders Seed
         orders_data = [
             ("Dr. Rahul Menon", "Table 2", 470.00, "preparing"),
             ("Walk-in Guest", "Table 5", 295.00, "incoming"),
@@ -430,10 +494,6 @@ def init_db(force_reseed=False):
             VALUES (?, ?, ?, ?)
         """, orders_data)
 
-        # 9. Order Items Seed
-        # Order 1: 2x Thalassery Biriyani (item 6: 190.00) + 2x Kulukki Sarbath (item 16: 45.00) = 470
-        # Order 2: 1x Arabian Kuzhi Mandi (item 7: 220.00) + 1x Elaneer Pudding (item 18: 75.00) = 295
-        # Order 3: 3x Malabar Porotta & Beef (item 2: 140.00) + 3x Sulaimani Tea (item 15: 25.00) = 495
         order_items_data = [
             (1, 6, 2, 190.00),
             (1, 16, 2, 45.00),
@@ -447,14 +507,11 @@ def init_db(force_reseed=False):
             VALUES (?, ?, ?, ?)
         """, order_items_data)
 
-        # 10. Initial Bills Seed (Order 3 completed)
-        # Subtotal: 495.00, Tax (5% GST): 24.75, Discount: 0.00, Grand Total: 519.75
         cursor.execute("""
             INSERT INTO bills (order_id, customer_name, subtotal, tax, discount, grand_total, payment_method, payment_status)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (3, "Amina Basheer", 495.00, 24.75, 0.00, 519.75, "UPI / GPay", "Paid"))
 
-        # 11. Feedback Seed
         feedback_data = [
             ("Dr. Rahul Menon", 5, "The Thalassery Biriyani with Jeerakasala rice and date pickle tasted completely authentic! Exceptional table hospitality."),
             ("Amina Basheer", 5, "Crispy golden Pazham Pori with spicy Malabar Beef Roast was heavenly. Warm Kerala ambiance and lightning-fast service."),
@@ -469,24 +526,32 @@ def init_db(force_reseed=False):
     conn.close()
 
 
+# Initialize database tables automatically upon startup
+init_db(force_reseed=False)
+
+
+# ================= ROOT ROUTE =================
+@app.route("/")
+def index():
+    return send_from_directory(FRONTEND_DIR, "index.html")
+
+
 # ================= API ENDPOINTS =================
 
 
 # 1. EXECUTIVE DASHBOARD STATS
-@app.route("/")
-def index():
-    return send_from_directory(FRONTEND_DIR, "index.html")
+@app.route("/api/stats", methods=["GET"])
 def get_stats():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    active_customers = cursor.execute("SELECT COUNT(*) FROM customers").fetchone()[0]
-    reservations_today = cursor.execute("SELECT COUNT(*) FROM tables WHERE status = 'reserved'").fetchone()[0]
-    fulfilled_orders = cursor.execute("SELECT COUNT(*) FROM orders WHERE status = 'delivered'").fetchone()[0]
-    revenue_result = cursor.execute("SELECT SUM(grand_total) FROM bills WHERE payment_status = 'Paid'").fetchone()[0]
+    active_customers = list(cursor.execute("SELECT COUNT(*) FROM customers").fetchone().values())[0]
+    reservations_today = list(cursor.execute("SELECT COUNT(*) FROM tables WHERE status = 'reserved'").fetchone().values())[0]
+    fulfilled_orders = list(cursor.execute("SELECT COUNT(*) FROM orders WHERE status = 'delivered'").fetchone().values())[0]
+    revenue_result = list(cursor.execute("SELECT SUM(grand_total) FROM bills WHERE payment_status = 'Paid'").fetchone().values())[0]
     total_revenue = float(revenue_result) if revenue_result else 0.0
-    total_menu_items = cursor.execute("SELECT COUNT(*) FROM menu_items").fetchone()[0]
-    low_stock_count = cursor.execute("SELECT COUNT(*) FROM inventory WHERE quantity <= reorder_level").fetchone()[0]
+    total_menu_items = list(cursor.execute("SELECT COUNT(*) FROM menu_items").fetchone().values())[0]
+    low_stock_count = list(cursor.execute("SELECT COUNT(*) FROM inventory WHERE quantity <= reorder_level").fetchone().values())[0]
 
     conn.close()
     return jsonify({
@@ -602,7 +667,7 @@ def get_orders():
             JOIN menu_items m ON oi.item_id = m.item_id
             WHERE oi.order_id = ?
             """,
-            (o["order_id"],),
+            (o_dict["order_id"],),
         ).fetchall()
         o_dict["items"] = [dict(it) for it in items]
         result.append(o_dict)
@@ -819,194 +884,5 @@ def get_bills():
     return jsonify([dict(b) for b in bills])
 
 
-@app.route("/api/bills/<int:bill_id>", methods=["GET"])
-def get_bill_detail(bill_id):
-    conn = get_db_connection()
-    bill = conn.execute("SELECT * FROM bills WHERE bill_id = ?", (bill_id,)).fetchone()
-    if not bill:
-        conn.close()
-        return jsonify({"error": "Bill not found"}), 404
-
-    b_dict = dict(bill)
-    items = conn.execute(
-        """
-        SELECT oi.quantity, oi.unit_price, m.name 
-        FROM order_items oi
-        JOIN menu_items m ON oi.item_id = m.item_id
-        WHERE oi.order_id = ?
-        """,
-        (b_dict["order_id"],),
-    ).fetchall()
-    b_dict["items"] = [dict(it) for it in items]
-    conn.close()
-    return jsonify(b_dict)
-
-
-@app.route("/api/bills/generate", methods=["POST"])
-def generate_bill():
-    data = request.get_json() or {}
-    customer_name = (data.get("customer_name") or "Walk-in Guest").strip()
-    table_number = (data.get("table_number") or "Table 1").strip()
-    items = data.get("items", [])
-    payment_method = (data.get("payment_method") or "UPI / Cash").strip()
-    try:
-        discount = float(data.get("discount", 0.0))
-    except (ValueError, TypeError):
-        discount = 0.0
-
-    if not items:
-        return jsonify({"error": "No items provided for bill generation"}), 400
-
-    subtotal = sum(float(item.get("price", 0)) * int(item.get("qty", 1)) for item in items)
-    tax = round(subtotal * 0.05, 2)  # 5% GST on Restaurant Service
-    grand_total = max(0.0, round(subtotal + tax - discount, 2))
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    # Create Order record in DB
-    cursor.execute(
-        "INSERT INTO orders (customer_name, table_number, total_amount, status) VALUES (?, ?, ?, ?)",
-        (customer_name, table_number, grand_total, "incoming"),
-    )
-    order_id = cursor.lastrowid
-
-    # Create Order Items records
-    for item in items:
-        item_name = item.get("name")
-        qty = int(item.get("qty", 1))
-        price = float(item.get("price", 0))
-
-        menu_item = cursor.execute("SELECT item_id FROM menu_items WHERE name = ?", (item_name,)).fetchone()
-        item_id = menu_item[0] if menu_item else None
-
-        if item_id:
-            cursor.execute(
-                "INSERT INTO order_items (order_id, item_id, quantity, unit_price) VALUES (?, ?, ?, ?)",
-                (order_id, item_id, qty, price),
-            )
-
-    # Create Bill record in DB
-    cursor.execute(
-        """
-        INSERT INTO bills (order_id, customer_name, subtotal, tax, discount, grand_total, payment_method, payment_status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (order_id, customer_name, subtotal, tax, discount, grand_total, payment_method, "Paid"),
-    )
-    bill_id = cursor.lastrowid
-
-    # Register customer if not already present
-    existing_cust = cursor.execute("SELECT customer_id FROM customers WHERE name = ?", (customer_name,)).fetchone()
-    if not existing_cust and customer_name != "Walk-in Guest":
-        cursor.execute(
-            "INSERT INTO customers (name, phone, address) VALUES (?, ?, ?)",
-            (customer_name, "N/A", "Dine-in Customer"),
-        )
-
-    conn.commit()
-    conn.close()
-
-    return jsonify({
-        "message": "Bill generated successfully",
-        "bill_id": bill_id,
-        "order_id": order_id,
-        "subtotal": subtotal,
-        "tax": tax,
-        "discount": discount,
-        "grand_total": grand_total
-    }), 201
-
-
-# 11. FEEDBACK SENTIMENTS
-@app.route("/api/feedback", methods=["GET"])
-def get_feedback():
-    conn = get_db_connection()
-    feedbacks = conn.execute("SELECT * FROM feedback ORDER BY feedback_id DESC").fetchall()
-    conn.close()
-    return jsonify([dict(f) for f in feedbacks])
-
-
-@app.route("/api/feedback", methods=["POST"])
-def add_feedback():
-    data = request.get_json() or {}
-    customer_name = (data.get("customer_name") or "Anonymous").strip()
-    try:
-        rating = int(data.get("rating", 5))
-    except (ValueError, TypeError):
-        rating = 5
-    comments = (data.get("comments") or "").strip()
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO feedback (customer_name, rating, comments) VALUES (?, ?, ?)",
-        (customer_name, rating, comments),
-    )
-    conn.commit()
-    conn.close()
-    return jsonify({"message": "Feedback submitted successfully"}), 201
-
-
-# 12. BUSINESS ANALYTICS & AUDIT EXPORT (DBMS prefix removed)
-@app.route("/api/reports/summary", methods=["GET"])
-def get_reports_summary():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    total_revenue = cursor.execute("SELECT SUM(grand_total) FROM bills WHERE payment_status = 'Paid'").fetchone()[0] or 0.0
-    total_bills = cursor.execute("SELECT COUNT(*) FROM bills").fetchone()[0]
-    total_inventory_items = cursor.execute("SELECT COUNT(*) FROM inventory").fetchone()[0]
-    low_stock_count = cursor.execute("SELECT COUNT(*) FROM inventory WHERE quantity <= reorder_level").fetchone()[0]
-    total_suppliers = cursor.execute("SELECT COUNT(*) FROM suppliers").fetchone()[0]
-    total_staff = cursor.execute("SELECT COUNT(*) FROM staff").fetchone()[0]
-
-    conn.close()
-    return jsonify({
-        "total_revenue": total_revenue,
-        "total_bills": total_bills,
-        "total_inventory_items": total_inventory_items,
-        "low_stock_count": low_stock_count,
-        "total_suppliers": total_suppliers,
-        "total_staff": total_staff
-    })
-
-
-@app.route("/api/reports/export", methods=["GET"])
-def export_reports():
-    conn = get_db_connection()
-    bills = [dict(b) for b in conn.execute("SELECT * FROM bills ORDER BY bill_id DESC").fetchall()]
-    orders = [dict(o) for o in conn.execute("SELECT * FROM orders ORDER BY order_id DESC").fetchall()]
-    inventory = [dict(i) for i in conn.execute("SELECT * FROM inventory").fetchall()]
-    conn.close()
-    return jsonify({
-        "bills": bills,
-        "orders": orders,
-        "inventory": inventory
-    })
-
-
-# 13. DEMO SEED RESET
-@app.route("/api/reset_kerala_demo", methods=["POST"])
-def reset_kerala_demo():
-    init_db(force_reseed=True)
-    return jsonify({"message": "Database successfully reseeded with authentic Kerala Cuisine demo data!"})
-
-
-# 14. SERVE FRONTEND AT ROOT URL
-@app.route("/")
-def serve_root():
-    return send_from_directory(FRONTEND_DIR, "index.html")
-
-
-@app.route("/<path:path>")
-def serve_static(path):
-    if os.path.exists(os.path.join(FRONTEND_DIR, path)):
-        return send_from_directory(FRONTEND_DIR, path)
-    return send_from_directory(FRONTEND_DIR, "index.html")
-
-
 if __name__ == "__main__":
-    init_db(force_reseed=False)
-    print("Database initialized successfully. Server starting at http://127.0.0.1:5000")
     app.run(debug=True, port=5000)
