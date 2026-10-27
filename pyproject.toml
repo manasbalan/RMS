@@ -1,0 +1,2 @@
+[tool.vercel]
+entrypoints:backend/app.py (variable: app)
