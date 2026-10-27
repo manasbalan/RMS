@@ -1,0 +1,2496 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Malabar Royal Palace RMS - Intelligent Restaurant Management</title>
+
+  <!-- Google Fonts: Outfit & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      --font-heading: 'Outfit', system-ui, -apple-system, sans-serif;
+
+      /* Luxury Dark Royal Theme (Default) */
+      --glass-bg: rgba(15, 23, 42, 0.78);
+      --glass-card: rgba(22, 30, 49, 0.74);
+      --glass-card-hover: rgba(33, 45, 72, 0.88);
+      --glass-border: rgba(245, 158, 11, 0.22);
+      --glass-border-light: rgba(255, 255, 255, 0.08);
+
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+
+      --accent-gold: #f59e0b;
+      --accent-primary: #f59e0b;
+      --accent-secondary: #00f2fe;
+      --accent-emerald: #10b981;
+      --accent-rose: #f43f5e;
+      --accent-amber: #fbbf24;
+
+      --gold-gradient: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      --emerald-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      --rose-gradient: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+      --cyan-gradient: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+
+      --sidebar-width: 290px;
+      --sidebar-collapsed: 80px;
+      --border-radius: 18px;
+      --shadow-lg: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
+      --shadow-glow: 0 0 25px rgba(245, 158, 11, 0.28);
+    }
+
+    [data-theme="neon"] {
+      --glass-bg: rgba(9, 13, 22, 0.88);
+      --glass-card: rgba(15, 23, 42, 0.85);
+      --glass-border: rgba(0, 242, 254, 0.35);
+      --accent-primary: #00f2fe;
+      --accent-gold: #00f2fe;
+      --text-main: #ffffff;
+      --shadow-glow: 0 0 25px rgba(0, 242, 254, 0.35);
+    }
+
+    [data-theme="light"] {
+      --glass-bg: rgba(255, 255, 255, 0.9);
+      --glass-card: rgba(255, 255, 255, 0.86);
+      --glass-card-hover: rgba(248, 250, 252, 0.95);
+      --glass-border: rgba(217, 119, 6, 0.3);
+      --glass-border-light: rgba(0, 0, 0, 0.08);
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-dim: #94a3b8;
+      --shadow-lg: 0 20px 40px -15px rgba(0, 0, 0, 0.15);
+      --shadow-glow: 0 0 25px rgba(245, 158, 11, 0.2);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-body);
+      color: var(--text-main);
+      background-color: #020617;
+      min-height: 100vh;
+      overflow-x: hidden;
+      line-height: 1.5;
+    }
+
+    /* ================= DYNAMIC RESTAURANT BACKGROUND ================= */
+    .dynamic-bg-container {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      transition: background-image 0.7s ease-in-out, transform 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+      filter: brightness(0.24) saturate(1.3);
+      transform: scale(1.02);
+      pointer-events: none;
+    }
+    [data-theme="light"] .dynamic-bg-container {
+      filter: brightness(0.85) saturate(1.1);
+    }
+
+    .dynamic-bg-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      background: radial-gradient(circle at 10% 10%, rgba(30, 27, 75, 0.55) 0%, rgba(15, 23, 42, 0.82) 45%, rgba(2, 6, 23, 0.94) 100%);
+      pointer-events: none;
+    }
+    [data-theme="light"] .dynamic-bg-overlay {
+      background: radial-gradient(circle at 10% 10%, rgba(255, 255, 255, 0.82) 0%, rgba(241, 245, 249, 0.9) 100%);
+    }
+
+    /* Ambient Glow Spheres */
+    .glow-sphere {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(120px);
+      z-index: 2;
+      pointer-events: none;
+      opacity: 0.35;
+    }
+    .glow-1 {
+      top: -100px;
+      left: 15%;
+      width: 480px;
+      height: 480px;
+      background: radial-gradient(circle, #f59e0b, #d97706);
+    }
+    .glow-2 {
+      bottom: -150px;
+      right: 10%;
+      width: 520px;
+      height: 520px;
+      background: radial-gradient(circle, #10b981, #00f2fe);
+    }
+
+    /* Main Viewport Shell */
+    .app-viewport {
+      position: relative;
+      z-index: 3;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ================= LUXURY LOGIN OVERLAY ================= */
+    .auth-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 5000;
+      background: radial-gradient(circle at center, rgba(15, 23, 42, 0.92) 0%, rgba(2, 6, 23, 0.98) 100%);
+      backdrop-filter: blur(25px);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1.5rem;
+      transition: opacity 0.5s ease, visibility 0.5s ease;
+    }
+    .auth-overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .auth-card {
+      background: var(--glass-card);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7), var(--shadow-glow);
+      border-radius: 26px;
+      padding: 2.6rem 2.8rem;
+      width: 100%;
+      max-width: 520px;
+      backdrop-filter: blur(20px);
+      text-align: center;
+      animation: fadeInUp 0.5s ease-out;
+      position: relative;
+      overflow: hidden;
+    }
+    .auth-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #f59e0b, #fbbf24, #10b981, #00f2fe);
+    }
+
+    .auth-logo-badge {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(16, 185, 129, 0.2));
+      border: 2px solid var(--accent-gold);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.4rem;
+      margin: 0 auto 1.2rem;
+      box-shadow: 0 0 30px rgba(245, 158, 11, 0.35);
+      animation: floatBadge 3s ease-in-out infinite;
+    }
+    @keyframes floatBadge {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+
+    .auth-title {
+      font-family: var(--font-heading);
+      font-size: 1.85rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #ffffff 0%, #fbbf24 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.3rem;
+    }
+
+    .auth-subtitle {
+      color: var(--text-muted);
+      font-size: 0.92rem;
+      margin-bottom: 1.4rem;
+    }
+
+    /* Abstract Credits Tag */
+    .project-credits-tag {
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      padding: 0.6rem 1rem;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      color: #fbbf24;
+      margin-bottom: 1.6rem;
+      text-align: center;
+      line-height: 1.4;
+    }
+
+    /* Form Styles */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      text-align: left;
+    }
+    .form-group label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.3px;
+    }
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .input-icon {
+      position: absolute;
+      left: 1rem;
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+    input, select, textarea {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid var(--glass-border-light);
+      padding: 0.85rem 1rem 0.85rem 2.8rem;
+      border-radius: 14px;
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 0.95rem;
+      transition: all 0.25s ease;
+      outline: none;
+    }
+    [data-theme="light"] input, [data-theme="light"] select, [data-theme="light"] textarea {
+      background: rgba(255, 255, 255, 0.95);
+      color: #0f172a;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent-gold);
+      box-shadow: 0 0 15px rgba(245, 158, 11, 0.25);
+      background: rgba(15, 23, 42, 0.85);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.85rem 1.6rem;
+      border-radius: 14px;
+      font-family: var(--font-heading);
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      border: none;
+      background: var(--gold-gradient);
+      color: #000000;
+      box-shadow: 0 8px 20px rgba(245, 158, 11, 0.3);
+      transition: all 0.25s ease;
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(245, 158, 11, 0.45);
+    }
+    .btn:active {
+      transform: translateY(0);
+    }
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--glass-border);
+      color: var(--text-main);
+      box-shadow: none;
+    }
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.16);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+    .btn-emerald {
+      background: var(--emerald-gradient);
+      color: #ffffff;
+      box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+    }
+    .btn-emerald:hover {
+      box-shadow: 0 12px 28px rgba(16, 185, 129, 0.45);
+    }
+    .btn-rose {
+      background: var(--rose-gradient);
+      color: #ffffff;
+    }
+
+    /* Quick Creds Button */
+    .demo-creds-btn {
+      background: transparent;
+      border: 1px dashed var(--accent-gold);
+      color: var(--accent-gold);
+      font-size: 0.8rem;
+      padding: 0.4rem 0.8rem;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      transition: all 0.2s;
+    }
+    .demo-creds-btn:hover {
+      background: rgba(245, 158, 11, 0.15);
+    }
+
+    /* ================= MAIN DASHBOARD SHELL ================= */
+    .dashboard-wrapper {
+      display: none;
+      min-height: 100vh;
+      flex-direction: row;
+    }
+    .dashboard-wrapper.visible {
+      display: flex;
+    }
+
+    /* Sidebar */
+    aside {
+      width: var(--sidebar-width);
+      background: var(--glass-bg);
+      backdrop-filter: blur(25px);
+      border-right: 1px solid var(--glass-border);
+      display: flex;
+      flex-direction: column;
+      transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      z-index: 100;
+      box-shadow: var(--shadow-lg);
+    }
+    aside.collapsed {
+      width: var(--sidebar-collapsed);
+    }
+
+    .brand-header {
+      padding: 1.6rem 1.4rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--glass-border-light);
+    }
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+    .brand-logo-badge {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(16, 185, 129, 0.2));
+      border: 1.5px solid var(--accent-gold);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      box-shadow: 0 0 15px rgba(245, 158, 11, 0.25);
+    }
+    .brand-title-wrap {
+      display: flex;
+      flex-direction: column;
+    }
+    .brand-title {
+      font-family: var(--font-heading);
+      font-weight: 800;
+      font-size: 1.15rem;
+      letter-spacing: -0.3px;
+      background: linear-gradient(135deg, #ffffff 0%, #fbbf24 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      white-space: nowrap;
+    }
+    .brand-badge-sub {
+      font-size: 0.7rem;
+      color: var(--accent-gold);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    aside.collapsed .brand-title-wrap {
+      display: none;
+    }
+
+    .sidebar-toggle-btn {
+      background: transparent;
+      border: 1px solid var(--glass-border-light);
+      color: var(--text-muted);
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .sidebar-toggle-btn:hover {
+      color: var(--text-main);
+      border-color: var(--accent-gold);
+    }
+
+    /* Nav List */
+    .nav-list {
+      list-style: none;
+      padding: 1rem 0.8rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      flex: 1;
+      overflow-y: auto;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.85rem 1rem;
+      border-radius: 14px;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.92rem;
+      transition: all 0.25s ease;
+      white-space: nowrap;
+      position: relative;
+    }
+    .nav-item:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .nav-item.active {
+      color: #000000;
+      background: var(--gold-gradient);
+      box-shadow: 0 4px 15px rgba(245, 158, 11, 0.35);
+    }
+    .nav-icon {
+      font-size: 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 24px;
+    }
+    aside.collapsed .nav-text {
+      display: none;
+    }
+
+    /* Sidebar Footer */
+    .sidebar-footer {
+      padding: 1.2rem;
+      border-top: 1px solid var(--glass-border-light);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .user-profile {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+    .avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: var(--gold-gradient);
+      color: #000;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+    }
+    aside.collapsed .user-info {
+      display: none;
+    }
+
+    /* ================= MAIN CONTENT AREA ================= */
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 100vh;
+      position: relative;
+      z-index: 10;
+    }
+
+    /* Top Bar */
+    header {
+      background: var(--glass-bg);
+      backdrop-filter: blur(25px);
+      border-bottom: 1px solid var(--glass-border);
+      padding: 0.9rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+      position: sticky;
+      top: 0;
+      z-index: 90;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+      flex: 1;
+    }
+    .current-ambiance-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      padding: 0.35rem 0.85rem;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #fbbf24;
+      white-space: nowrap;
+    }
+    .header-members-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 0.35rem 0.85rem;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #34d399;
+      white-space: nowrap;
+    }
+
+    .search-box {
+      position: relative;
+      width: 100%;
+      max-width: 320px;
+    }
+    .search-box input {
+      padding: 0.55rem 1rem 0.55rem 2.4rem;
+      font-size: 0.88rem;
+      border-radius: 12px;
+    }
+    .search-box span {
+      position: absolute;
+      left: 0.8rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+    .live-clock {
+      font-family: var(--font-heading);
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--accent-gold);
+      padding: 0.4rem 0.8rem;
+      background: rgba(245, 158, 11, 0.1);
+      border-radius: 10px;
+      border: 1px solid rgba(245, 158, 11, 0.2);
+    }
+
+    /* Content Body */
+    .content-container {
+      padding: 2rem;
+      flex: 1;
+      max-width: 1500px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .section-content {
+      display: none;
+      animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .section-content.active {
+      display: block;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--glass-card);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--border-radius);
+      padding: 1.6rem;
+      box-shadow: var(--shadow-lg);
+      backdrop-filter: blur(20px);
+      margin-bottom: 1.6rem;
+      transition: border-color 0.3s;
+    }
+    .card:hover {
+      border-color: rgba(245, 158, 11, 0.4);
+    }
+    .card-title {
+      font-family: var(--font-heading);
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #ffffff;
+    }
+    [data-theme="light"] .card-title {
+      color: #0f172a;
+    }
+
+    /* Metrics Grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.4rem;
+      margin-bottom: 1.8rem;
+    }
+    .metric-card {
+      background: var(--glass-card);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--border-radius);
+      padding: 1.4rem;
+      box-shadow: var(--shadow-lg);
+      backdrop-filter: blur(20px);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .metric-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4), var(--shadow-glow);
+    }
+    .metric-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.6rem;
+    }
+    .metric-title {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .metric-icon {
+      font-size: 1.4rem;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .metric-value {
+      font-family: var(--font-heading);
+      font-size: 1.9rem;
+      font-weight: 800;
+      color: var(--text-main);
+      letter-spacing: -0.5px;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.25rem 0.65rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge-amber {
+      background: rgba(245, 158, 11, 0.18);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.35);
+    }
+    .badge-emerald {
+      background: rgba(16, 185, 129, 0.18);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.35);
+    }
+    .badge-rose {
+      background: rgba(244, 63, 94, 0.18);
+      color: #fb7185;
+      border: 1px solid rgba(244, 63, 94, 0.35);
+    }
+    .badge-cyan {
+      background: rgba(0, 242, 254, 0.18);
+      color: #00f2fe;
+      border: 1px solid rgba(0, 242, 254, 0.35);
+    }
+
+    /* Category Pills */
+    .category-pills {
+      display: flex;
+      gap: 0.6rem;
+      margin-bottom: 1.4rem;
+      flex-wrap: wrap;
+    }
+    .pill {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border-light);
+      padding: 0.55rem 1.1rem;
+      border-radius: 20px;
+      color: var(--text-muted);
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .pill:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: var(--text-main);
+    }
+    .pill.active {
+      background: var(--gold-gradient);
+      color: #000;
+      border-color: transparent;
+      box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+    }
+
+    /* ================= KERALA MENU GRID ================= */
+    .menu-layout {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 1.8rem;
+    }
+    @media (max-width: 1050px) {
+      .menu-layout { grid-template-columns: 1fr; }
+    }
+    .menu-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1.3rem;
+    }
+    .menu-card {
+      background: var(--glass-card);
+      border: 1px solid var(--glass-border);
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
+    .menu-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--accent-gold);
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5), var(--shadow-glow);
+    }
+    .menu-img {
+      height: 160px;
+      background-size: cover;
+      background-position: center;
+      position: relative;
+    }
+    .menu-img::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, transparent 40%, rgba(15, 23, 42, 0.95) 100%);
+    }
+    .menu-category-tag {
+      position: absolute;
+      top: 0.8rem;
+      left: 0.8rem;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      padding: 0.25rem 0.65rem;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      z-index: 2;
+    }
+    .menu-body {
+      padding: 1rem 1.2rem 1.2rem;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+    .menu-title {
+      font-family: var(--font-heading);
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 0.3rem;
+      color: #ffffff;
+    }
+    [data-theme="light"] .menu-title { color: #0f172a; }
+    .menu-desc {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-bottom: 0.9rem;
+      flex: 1;
+      line-height: 1.4;
+    }
+    .menu-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 0.6rem;
+      border-top: 1px solid var(--glass-border-light);
+    }
+    .menu-price {
+      font-family: var(--font-heading);
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: #fbbf24;
+    }
+
+    /* Cart Panel */
+    .cart-panel {
+      position: sticky;
+      top: 6rem;
+      height: fit-content;
+    }
+    .cart-items {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      max-height: 380px;
+      overflow-y: auto;
+      margin-bottom: 1rem;
+    }
+    .cart-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 0.9rem;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--glass-border-light);
+      border-radius: 12px;
+    }
+
+    /* Floor Map */
+    .floor-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1.2rem;
+    }
+    .table-node {
+      background: var(--glass-card);
+      border: 2px solid var(--glass-border);
+      border-radius: 18px;
+      padding: 1.5rem 1.2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+    .table-node:hover {
+      transform: translateY(-4px);
+    }
+    .table-node.available {
+      border-color: rgba(16, 185, 129, 0.5);
+      background: rgba(16, 185, 129, 0.06);
+    }
+    .table-node.occupied {
+      border-color: rgba(244, 63, 94, 0.5);
+      background: rgba(244, 63, 94, 0.06);
+    }
+    .table-node.reserved {
+      border-color: rgba(245, 158, 11, 0.5);
+      background: rgba(245, 158, 11, 0.06);
+    }
+
+    /* Kanban Board */
+    .kanban-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.4rem;
+    }
+    @media (max-width: 950px) {
+      .kanban-grid { grid-template-columns: 1fr; }
+    }
+    .kanban-col {
+      background: var(--glass-card);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 1.3rem;
+      min-height: 480px;
+      display: flex;
+      flex-direction: column;
+    }
+    .kanban-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 0.8rem;
+      border-bottom: 1px solid var(--glass-border-light);
+    }
+    .kanban-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      flex: 1;
+    }
+    .kanban-card {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid var(--glass-border-light);
+      border-radius: 14px;
+      padding: 1.1rem;
+      cursor: grab;
+      transition: all 0.25s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    .kanban-card:active { cursor: grabbing; }
+    .kanban-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent-gold);
+    }
+
+    .order-items-badge-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin: 0.5rem 0;
+    }
+    .order-item-chip {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--glass-border-light);
+      padding: 0.2rem 0.5rem;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      color: var(--text-main);
+    }
+    .order-card-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.4rem;
+    }
+
+    /* Modal Popups */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.85);
+      backdrop-filter: blur(16px);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 4000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+      padding: 1rem;
+    }
+    .modal-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+    .modal-card {
+      background: var(--glass-card);
+      border: 1px solid var(--glass-border);
+      border-radius: 24px;
+      padding: 2.2rem;
+      width: 100%;
+      max-width: 540px;
+      box-shadow: var(--shadow-lg), var(--shadow-glow);
+      transform: scale(0.92);
+      transition: all 0.3s ease;
+      position: relative;
+    }
+    .modal-overlay.active .modal-card {
+      transform: scale(1);
+    }
+
+    /* Printable Thermal Receipt */
+    .receipt-box {
+      background: #0f172a;
+      color: #f8fafc;
+      border: 1px solid var(--glass-border);
+      border-radius: 14px;
+      padding: 1.5rem;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.88rem;
+      line-height: 1.5;
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+    @media print {
+      body * {
+        visibility: hidden !important;
+      }
+      #receiptModal, #receiptModal * {
+        visibility: visible !important;
+      }
+      #receiptModal {
+        position: fixed !important;
+        inset: 0 !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        z-index: 99999 !important;
+      }
+      .receipt-box {
+        background: #ffffff !important;
+        color: #000000 !important;
+        border: none !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+
+    /* Toast Container */
+    .toast-container {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+      z-index: 5000;
+    }
+    .toast {
+      background: var(--glass-card);
+      border: 1px solid var(--glass-border);
+      border-left: 4px solid var(--accent-gold);
+      padding: 0.9rem 1.4rem;
+      border-radius: 12px;
+      box-shadow: var(--shadow-lg);
+      backdrop-filter: blur(20px);
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.88rem;
+      animation: slideInRight 0.3s ease;
+    }
+
+    /* Form Grid */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+    }
+    .form-group.full {
+      grid-column: 1 / -1;
+    }
+
+    /* Animations */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes slideInRight {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Dynamic Restaurant Background Layer -->
+  <div class="dynamic-bg-container" id="dynamicBg"></div>
+  <div class="dynamic-bg-overlay"></div>
+
+  <!-- Ambient Glow Spheres -->
+  <div class="glow-sphere glow-1"></div>
+  <div class="glow-sphere glow-2"></div>
+
+  <div class="app-viewport">
+    
+    <!-- ================= BEAUTIFUL OWNER AUTH SCREEN ================= -->
+    <div class="auth-overlay" id="loginPage">
+      <div class="auth-card">
+        <div class="auth-logo-badge">🍽️</div>
+        <h1 class="auth-title">MALABAR ROYAL PALACE</h1>
+        <p class="auth-subtitle">Authentic Kerala Flavors • Intelligent Restaurant Management System</p>
+        
+        <!-- Project Abstract Academic Attribution -->
+        <div class="project-credits-tag">
+          <strong>🎓 RESTAURANT DATABASE MANAGEMENT SYSTEM</strong><br/>
+          July 2026 • Academic Project Implementation<br/>
+          <strong>Team Members:</strong> Manas (26) • Shibin (52) • Raneem (44)
+        </div>
+
+        <form onsubmit="handleLogin(event)" style="display:flex; flex-direction:column; gap:1.1rem;">
+          <div class="form-group">
+            <label>Owner Access ID</label>
+            <div class="input-wrapper">
+              <span class="input-icon">👤</span>
+              <input type="text" id="loginId" value="owner@restaurant.com" required placeholder="owner@restaurant.com" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Security Key</label>
+            <div class="input-wrapper">
+              <span class="input-icon">🔒</span>
+              <input type="password" id="loginPass" value="password" required placeholder="••••••••" />
+            </div>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <button type="button" class="demo-creds-btn" onclick="fillDemoCreds()">⚡ Auto-Fill Demo Credentials</button>
+            <small style="color:var(--text-muted); font-size:0.75rem;">SQLite Relational Core</small>
+          </div>
+          <button type="submit" class="btn" style="width: 100%; margin-top:0.4rem; padding:0.95rem;">
+            AUTHENTICATE &amp; ENTER OWNER PORTAL ➔
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ================= MAIN APPLICATION PORTAL ================= -->
+    <div class="dashboard-wrapper" id="dashPage">
+      
+      <!-- Collapsible Sidebar -->
+      <aside id="mainSidebar">
+        <div class="brand-header">
+          <div class="brand-logo">
+            <div class="brand-logo-badge">👑</div>
+            <div class="brand-title-wrap">
+              <span class="brand-title">Malabar Royal</span>
+              <span class="brand-badge-sub">Restaurant Portal</span>
+            </div>
+          </div>
+          <button class="sidebar-toggle-btn" onclick="toggleSidebar()" title="Toggle Sidebar">☰</button>
+        </div>
+
+        <ul class="nav-list">
+          <li class="nav-item active" onclick="switchSection('sect-dash', this)">
+            <span class="nav-icon">📊</span><span class="nav-text">Dashboard Overview</span>
+          </li>
+          <li class="nav-item" onclick="switchSection('sect-cust', this)">
+            <span class="nav-icon">👤</span><span class="nav-text">Customers &amp; Floor</span>
+          </li>
+          <li class="nav-item" onclick="switchSection('sect-menu', this)">
+            <span class="nav-icon">🍛</span><span class="nav-text">Kerala Menu &amp; Cart</span>
+          </li>
+          <li class="nav-item" onclick="switchSection('sect-orders', this)">
+            <span class="nav-icon">📦</span><span class="nav-text">Live Orders &amp; Kitchen</span>
+          </li>
+          <li class="nav-item" onclick="switchSection('sect-inventory', this)">
+            <span class="nav-icon">🏷️</span><span class="nav-text">Stock Inventory</span>
+          </li>
+          <li class="nav-item" onclick="switchSection('sect-suppliers', this)">
+            <span class="nav-icon">🏭</span><span class="nav-text">Suppliers Directory</span>
+          </li>
+          <li class="nav-item" onclick="switchSection('sect-bills', this)">
+            <span class="nav-icon">🧾</span><span class="nav-text">Bills &amp; Invoices</span>
+          </li>
+          <li class="nav-item" onclick="switchSection('sect-staff', this)">
+            <span class="nav-icon">👥</span><span class="nav-text">Staff &amp; Personnel</span>
+          </li>
+          <!-- Removed "DBMS" as explicitly requested -->
+          <li class="nav-item" onclick="switchSection('sect-reports', this)">
+            <span class="nav-icon">📈</span><span class="nav-text">Business Analytics</span>
+          </li>
+          <li class="nav-item" onclick="switchSection('sect-feedback', this)">
+            <span class="nav-icon">💬</span><span class="nav-text">Guest Feedbacks</span>
+          </li>
+        </ul>
+
+        <div class="sidebar-footer">
+          <div class="user-profile">
+            <div class="avatar">MR</div>
+            <div class="user-info">
+              <strong style="font-size:0.86rem; display:block;">Malabar Owner</strong>
+              <small style="color:var(--text-muted); font-size:0.72rem;">Admin Session Active</small>
+            </div>
+          </div>
+          <button class="sidebar-toggle-btn" onclick="handleLogout()" title="Sign Out">🚪</button>
+        </div>
+      </aside>
+
+      <!-- Main Center Content -->
+      <main>
+        
+        <!-- Top App Bar -->
+        <header>
+          <div class="header-left">
+            <div class="current-ambiance-pill" id="ambiancePill">
+              <span>📍 Ambience:</span>
+              <strong id="ambianceLabel">Grand Royal Dining Hall</strong>
+            </div>
+            <div class="header-members-pill">
+              <span>🎓 Team:</span>
+              <strong>Manas 26 • Shibin 52 • Raneem 44</strong>
+            </div>
+          </div>
+
+          <div class="search-box">
+            <span>🔍</span>
+            <input type="text" id="globalSearch" placeholder="Search dishes, bills, orders..." onkeyup="handleSearch()" />
+          </div>
+
+          <div class="header-actions">
+            <div class="live-clock" id="liveClock">--:--:--</div>
+            <button class="btn btn-secondary" style="padding:0.5rem 0.8rem; font-size:0.8rem;" onclick="toggleTheme()" title="Switch Theme">🎨 Theme</button>
+            <button class="btn btn-secondary" style="padding:0.5rem 0.8rem; font-size:0.8rem;" onclick="reseedKeralaDemo()" title="Reset to Kerala Demo">🔄 Reseed</button>
+          </div>
+        </header>
+
+        <div class="content-container">
+
+          <!-- 1. DASHBOARD OVERVIEW -->
+          <section class="section-content active" id="sect-dash">
+            <div class="metrics-grid">
+              <div class="metric-card">
+                <div class="metric-header">
+                  <span class="metric-title">Active Customers</span>
+                  <div class="metric-icon">👤</div>
+                </div>
+                <div class="metric-value" id="active-customers">0</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-header">
+                  <span class="metric-title">Reservations Today</span>
+                  <div class="metric-icon">🪑</div>
+                </div>
+                <div class="metric-value" id="reservations-today">0</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-header">
+                  <span class="metric-title">Fulfilled Orders</span>
+                  <div class="metric-icon">📦</div>
+                </div>
+                <div class="metric-value" id="fulfilled-orders">0</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-header">
+                  <span class="metric-title">Gross Revenue</span>
+                  <div class="metric-icon">💰</div>
+                </div>
+                <div class="metric-value" id="total-revenue" style="color:#fbbf24">₹0.00</div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">
+                <span>⚡ Live Kitchen &amp; Floor Alerts</span>
+                <span class="badge badge-rose">Real-Time Sync</span>
+              </div>
+              <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.8rem;">
+                <li style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); padding:0.9rem 1.3rem; border-radius:12px; border:1px solid var(--glass-border-light)">
+                  <span>🔥 <strong>Thalassery Biriyani Dum Station</strong>: Batch #3 ready for plating &amp; dispatch</span>
+                  <span class="badge badge-emerald">Kitchen Active</span>
+                </li>
+                <li style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); padding:0.9rem 1.3rem; border-radius:12px; border:1px solid var(--glass-border-light)">
+                  <span>🪑 <strong>Family AC Suite Table 3</strong>: VIP Table reservation arrival scheduled</span>
+                  <span class="badge badge-amber">Reserved</span>
+                </li>
+              </ul>
+            </div>
+          </section>
+
+          <!-- 2. CUSTOMERS & FLOOR MAP -->
+          <section class="section-content" id="sect-cust">
+            <div class="card">
+              <div class="card-title">👤 Register New Customer</div>
+              <form class="form-grid" onsubmit="event.preventDefault(); addCustomerSubmit(this);">
+                <div class="form-group"><label>Customer Full Name</label><input type="text" id="cust-name" placeholder="Dr. Rahul Menon" required /></div>
+                <div class="form-group"><label>Phone Number</label><input type="tel" id="cust-phone" placeholder="98471-88990" required /></div>
+                <div class="form-group"><label>Email Address</label><input type="email" id="cust-email" placeholder="rahul.menon@keralahealth.org" /></div>
+                <div class="form-group"><label>Delivery / Residential Address</label><input type="text" id="cust-address" placeholder="Panampilly Nagar, Kochi" /></div>
+                <div class="form-group full" style="display:flex; justify-content:flex-end;">
+                  <button type="submit" class="btn">Register Customer</button>
+                </div>
+              </form>
+            </div>
+
+            <div class="card">
+              <div class="card-title">
+                <span>🪑 Dining Tables &amp; Seating Floor Map</span>
+                <small style="font-size:0.8rem; color:var(--text-muted); font-weight:normal;">Tap table node to cycle status: (Available ➔ Occupied ➔ Reserved)</small>
+              </div>
+              <div class="floor-grid" id="tables-container">
+                <!-- Loaded dynamically -->
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">👥 Registered Customer Directory</div>
+              <div id="customers-list" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:1rem;"></div>
+            </div>
+          </section>
+
+          <!-- 3. KERALA MENU & BILLING CART -->
+          <section class="section-content" id="sect-menu">
+            <div class="menu-layout">
+              <div>
+                <div class="category-pills" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;">
+                  <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                    <button class="pill active" onclick="filterMenuCategory('All', this)">All Items</button>
+                    <button class="pill" onclick="filterMenuCategory('Breakfast', this)">🌅 Breakfast</button>
+                    <button class="pill" onclick="filterMenuCategory('Afternoon Meals & Biriyani', this)">🍛 Lunch &amp; Biriyani</button>
+                    <button class="pill" onclick="filterMenuCategory('Evening Snacks', this)">☕ Evening Snacks</button>
+                    <button class="pill" onclick="filterMenuCategory('Drinks & Desserts', this)">🍹 Drinks &amp; Sweets</button>
+                  </div>
+                  <button class="btn btn-secondary" style="padding:0.45rem 1rem; font-size:0.82rem;" onclick="openModal('addMenuModal')">+ Add New Dish</button>
+                </div>
+
+                <div class="menu-grid" id="menu-container">
+                  <!-- Loaded dynamically -->
+                </div>
+              </div>
+
+              <!-- Cart Summary Panel -->
+              <div class="cart-panel">
+                <div class="card">
+                  <div class="card-title">🧾 Invoice Cart</div>
+                  <div class="cart-items" id="cart-list">
+                    <p style="color: var(--text-muted); font-size: 0.85rem;">Cart is empty. Select Kerala dishes to bill.</p>
+                  </div>
+                  <div style="border-top:1px dashed var(--glass-border); padding-top:1rem; margin-top:0.5rem;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:0.8rem;">
+                      <span>Total Amount (Inc. 5% GST)</span>
+                      <strong id="cart-total" style="font-size:1.2rem; color:#fbbf24;">₹0.00</strong>
+                    </div>
+                    <button class="btn btn-emerald" style="width: 100%;" onclick="checkoutCart()">Complete Order &amp; Generate Bill</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 4. LIVE ORDERS & KITCHEN PIPELINE -->
+          <section class="section-content" id="sect-orders">
+            <div class="kanban-grid">
+              <div class="kanban-col">
+                <div class="kanban-header">
+                  <strong style="font-family:var(--font-heading)">📥 New Incoming Orders</strong>
+                  <span class="badge badge-amber" id="count-incoming">0</span>
+                </div>
+                <div class="kanban-cards" id="col-incoming" ondragover="allowDrop(event)" ondrop="dropCard(event, 'incoming')">
+                  <!-- Dynamic cards -->
+                </div>
+              </div>
+
+              <div class="kanban-col">
+                <div class="kanban-header">
+                  <strong style="font-family:var(--font-heading)">🍳 Preparing in Kitchen</strong>
+                  <span class="badge badge-cyan" id="count-preparing">0</span>
+                </div>
+                <div class="kanban-cards" id="col-preparing" ondragover="allowDrop(event)" ondrop="dropCard(event, 'preparing')">
+                  <!-- Dynamic cards -->
+                </div>
+              </div>
+
+              <div class="kanban-col">
+                <div class="kanban-header">
+                  <strong style="font-family:var(--font-heading)">🚴 Dispatched / Served</strong>
+                  <span class="badge badge-emerald" id="count-delivered">0</span>
+                </div>
+                <div class="kanban-cards" id="col-delivered" ondragover="allowDrop(event)" ondrop="dropCard(event, 'delivered')">
+                  <!-- Dynamic cards -->
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 5. STOCK INVENTORY -->
+          <section class="section-content" id="sect-inventory">
+            <div class="card">
+              <div class="card-title">🏷️ Add Kitchen Inventory Stock</div>
+              <form class="form-grid" onsubmit="event.preventDefault(); addInventorySubmit(this);">
+                <div class="form-group"><label>Ingredient / Stock Item</label><input type="text" id="inv-name" placeholder="Jeerakasala Kaima Rice" required /></div>
+                <div class="form-group"><label>Initial Quantity</label><input type="number" id="inv-qty" value="50" required /></div>
+                <div class="form-group"><label>Unit (kg, L, pack, box)</label><input type="text" id="inv-unit" value="kg" required /></div>
+                <div class="form-group"><label>Reorder Threshold</label><input type="number" id="inv-reorder" value="15" required /></div>
+                <div class="form-group"><label>Assigned Supplier</label><select id="inv-supplier"></select></div>
+                <div class="form-group full" style="display:flex; justify-content:flex-end;">
+                  <button type="submit" class="btn">Add Stock Item</button>
+                </div>
+              </form>
+            </div>
+
+            <div class="card">
+              <div class="card-title">📦 Kitchen Inventory Stock Balances</div>
+              <div id="inventory-list" style="display:flex; flex-direction:column; gap:0.8rem;"></div>
+            </div>
+          </section>
+
+          <!-- 6. SUPPLIERS DIRECTORY -->
+          <section class="section-content" id="sect-suppliers">
+            <div class="card">
+              <div class="card-title">🏭 Register New Agro &amp; Spice Supplier</div>
+              <form class="form-grid" onsubmit="event.preventDefault(); addSupplierSubmit(this);">
+                <div class="form-group"><label>Supplier Name / Business</label><input type="text" id="sup-name" placeholder="Idukki Spice Valley Co." required /></div>
+                <div class="form-group"><label>Contact Person</label><input type="text" id="sup-contact" placeholder="Thomas Joseph" required /></div>
+                <div class="form-group"><label>Phone Number</label><input type="tel" id="sup-phone" placeholder="98470-11223" required /></div>
+                <div class="form-group"><label>Email Address</label><input type="email" id="sup-email" placeholder="spices@idukkiagro.in" /></div>
+                <div class="form-group full"><label>Office / Warehouse Address</label><input type="text" id="sup-address" placeholder="Kumily, Idukki, Kerala" /></div>
+                <div class="form-group full" style="display:flex; justify-content:flex-end;">
+                  <button type="submit" class="btn">Register Supplier</button>
+                </div>
+              </form>
+            </div>
+
+            <div class="card">
+              <div class="card-title">🏢 Active Agro &amp; Seafood Suppliers</div>
+              <div id="suppliers-list" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:1.2rem;"></div>
+            </div>
+          </section>
+
+          <!-- 7. BILLS & INVOICES -->
+          <section class="section-content" id="sect-bills">
+            <div class="card">
+              <div class="card-title">🧾 Automated Tax Invoices Register</div>
+              <div id="bills-list" style="display:flex; flex-direction:column; gap:0.8rem;"></div>
+            </div>
+          </section>
+
+          <!-- 8. STAFF & PERSONNEL -->
+          <section class="section-content" id="sect-staff">
+            <div class="card">
+              <div class="card-title">👥 Add Staff / Culinary Member</div>
+              <form class="form-grid" onsubmit="event.preventDefault(); addStaffSubmit(this);">
+                <div class="form-group"><label>Staff Full Name</label><input type="text" id="staff-name" placeholder="Chef Moideen K." required /></div>
+                <div class="form-group">
+                  <label>Designation / Role</label>
+                  <select id="staff-role">
+                    <option>Master Malabar Head Chef</option>
+                    <option>Traditional Sadhya & Curry Specialist</option>
+                    <option>Restaurant General Operations Manager</option>
+                    <option>Front Desk & Floor Supervisor</option>
+                    <option>Senior Dining Captain & Sommelier</option>
+                  </select>
+                </div>
+                <div class="form-group"><label>Phone</label><input type="tel" id="staff-phone" placeholder="98470-55101" required /></div>
+                <div class="form-group"><label>Monthly Salary (₹)</label><input type="number" id="staff-salary" value="50000" required /></div>
+                <div class="form-group full" style="display:flex; justify-content:flex-end;">
+                  <button type="submit" class="btn">Add Staff Roll</button>
+                </div>
+              </form>
+            </div>
+
+            <div class="card">
+              <div class="card-title">👨‍🍳 Active Restaurant Personnel Roll</div>
+              <div id="staff-list" style="display:flex; flex-direction:column; gap:0.8rem;"></div>
+            </div>
+          </section>
+
+          <!-- 9. BUSINESS ANALYTICS (DBMS REMOVED) -->
+          <section class="section-content" id="sect-reports">
+            <div class="metrics-grid">
+              <div class="metric-card">
+                <div class="metric-header"><span class="metric-title">Gross Revenue</span><div class="metric-icon">💵</div></div>
+                <div class="metric-value" id="rpt-revenue" style="color:#fbbf24">₹0.00</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-header"><span class="metric-title">Invoices Generated</span><div class="metric-icon">🧾</div></div>
+                <div class="metric-value" id="rpt-bills">0</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-header"><span class="metric-title">Active Menu Items</span><div class="metric-icon">🍛</div></div>
+                <div class="metric-value" id="rpt-items">0</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-header"><span class="metric-title">Low Stock Warnings</span><div class="metric-icon">⚠️</div></div>
+                <div class="metric-value" id="rpt-lowstock" style="color:var(--accent-rose)">0</div>
+              </div>
+            </div>
+
+            <div class="card" style="margin-top:1.5rem;">
+              <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.8rem;">
+                <span>📊 Audit Records &amp; Executive Data Export</span>
+                <button class="btn btn-emerald" onclick="exportDataCSV()">📥 Export Comprehensive CSV</button>
+              </div>
+              <p style="color:var(--text-muted); font-size:0.9rem; margin-top:0.5rem;">
+                Download complete consolidated records of sales revenue, billing invoices, live order statuses, and inventory balances for offline auditing and accounting.
+              </p>
+            </div>
+          </section>
+
+          <!-- 10. GUEST FEEDBACK SENTIMENTS -->
+          <section class="section-content" id="sect-feedback">
+            <div class="card">
+              <div class="card-title">✍️ Submit Guest Dining Feedback</div>
+              <form class="form-grid" onsubmit="event.preventDefault(); submitFeedback(this);">
+                <div class="form-group"><label>Customer Name</label><input type="text" id="fb-name" placeholder="Dr. Rahul Menon" required /></div>
+                <div class="form-group">
+                  <label>Rating (Stars)</label>
+                  <select id="fb-rating">
+                    <option value="5">⭐⭐⭐⭐⭐ (5 Stars - Exceptional)</option>
+                    <option value="4">⭐⭐⭐⭐ (4 Stars - Great)</option>
+                    <option value="3">⭐⭐⭐ (3 Stars - Average)</option>
+                    <option value="2">⭐⭐ (2 Stars - Fair)</option>
+                    <option value="1">⭐ (1 Star - Needs Work)</option>
+                  </select>
+                </div>
+                <div class="form-group full"><label>Feedback Comments</label><textarea id="fb-comments" rows="3" placeholder="Share your dining experience with Malabar Royal..." required></textarea></div>
+                <div class="form-group full" style="display:flex; justify-content:flex-end;">
+                  <button type="submit" class="btn">Submit Feedback</button>
+                </div>
+              </form>
+            </div>
+
+            <div class="card">
+              <div class="card-title">💬 Live Guest Service Feedbacks</div>
+              <ul id="feedback-list" style="list-style: none; display: flex; flex-direction: column; gap: 1rem;"></ul>
+            </div>
+          </section>
+
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Restock Modal Dialog -->
+  <div class="modal-overlay" id="restockModal">
+    <div class="modal-card">
+      <div class="card-title">📦 Restock Kitchen Inventory</div>
+      <p id="modal-restock-label" style="margin-bottom:1rem; color:var(--text-muted)"></p>
+      <div class="form-group" style="margin-bottom:1.5rem;">
+        <label>Quantity to Add</label>
+        <input type="number" id="modal-restock-qty" value="10" min="1" required />
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:0.8rem;">
+        <button class="btn btn-secondary" onclick="closeModal('restockModal')">Cancel</button>
+        <button class="btn" onclick="confirmRestock()">Confirm Restock</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Menu Item Modal -->
+  <div class="modal-overlay" id="addMenuModal">
+    <div class="modal-card">
+      <div class="card-title">🍛 Add Authentic Kerala Dish</div>
+      <form onsubmit="event.preventDefault(); submitNewMenuItem(this);" style="display:flex; flex-direction:column; gap:1rem;">
+        <div class="form-group">
+          <label>Dish Name</label>
+          <input type="text" id="new-menu-name" placeholder="Thalassery Mutton Dum Biriyani" required />
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select id="new-menu-category">
+            <option value="1">🌅 Breakfast</option>
+            <option value="2">🍛 Afternoon Meals &amp; Biriyani</option>
+            <option value="3">☕ Evening Snacks</option>
+            <option value="4">🍹 Drinks &amp; Desserts</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Price (₹)</label>
+          <input type="number" step="0.5" id="new-menu-price" placeholder="240.00" required />
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <input type="text" id="new-menu-desc" placeholder="Aromatic Malabar Dum Biriyani with tender mutton pieces and Kaima rice" />
+        </div>
+        <div class="form-group">
+          <label>Image URL (Optional)</label>
+          <input type="url" id="new-menu-img" placeholder="https://images.unsplash.com/..." />
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:0.8rem; margin-top:0.5rem;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('addMenuModal')">Cancel</button>
+          <button type="submit" class="btn">Save Kerala Dish</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Printable Receipt Modal -->
+  <div class="modal-overlay" id="receiptModal">
+    <div class="modal-card" style="max-width: 550px;">
+      <div class="card-title no-print" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>🧾 Malabar Royal Tax Invoice</span>
+        <button class="btn btn-secondary" style="padding:0.2rem 0.6rem; font-size:0.8rem;" onclick="closeModal('receiptModal')">✕</button>
+      </div>
+      <div class="receipt-box" id="receipt-content">
+        <!-- Rendered dynamically -->
+      </div>
+      <div class="no-print" style="display:flex; justify-content:flex-end; gap:0.8rem; margin-top:1.2rem;">
+        <button class="btn btn-secondary" onclick="closeModal('receiptModal')">Close</button>
+        <button class="btn btn-emerald" onclick="window.print()">🖨️ Print Receipt</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+    const API_BASE = (window.location.origin && window.location.origin.startsWith("http"))
+      ? `${window.location.origin}/api`
+      : "http://127.0.0.1:5000/api";
+
+    let activeRestockId = null;
+    let allMenuItems = [];
+
+    // ================= DYNAMIC RESTAURANT BACKGROUNDS PER SECTION =================
+    const SECTION_BACKGROUNDS = {
+      'sect-dash': {
+        url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1920&q=80',
+        name: 'Grand Royal Dining Hall'
+      },
+      'sect-cust': {
+        url: 'https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&w=1920&q=80',
+        name: 'Heritage Courtyard & Seating Floor'
+      },
+      'sect-menu': {
+        url: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1920&q=80',
+        name: 'Sizzling Kerala Gourmet Kitchen'
+      },
+      'sect-orders': {
+        url: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&w=1920&q=80',
+        name: 'Live Chef Plating Line & Pass'
+      },
+      'sect-inventory': {
+        url: 'https://images.unsplash.com/photo-1578474846511-04ba529f0b88?auto=format&fit=crop&w=1920&q=80',
+        name: 'Cellar & Ingredient Pantry'
+      },
+      'sect-suppliers': {
+        url: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1920&q=80',
+        name: 'Kerala Spice Farms & Produce'
+      },
+      'sect-bills': {
+        url: 'https://images.unsplash.com/photo-1445116572660-238429888259?auto=format&fit=crop&w=1920&q=80',
+        name: 'Luxury Reception & Cash Counter'
+      },
+      'sect-staff': {
+        url: 'https://images.unsplash.com/photo-1577219491135-ce391730fb2c?auto=format&fit=crop&w=1920&q=80',
+        name: 'Master Culinary Team Suite'
+      },
+      'sect-reports': {
+        url: 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=1920&q=80',
+        name: 'Executive Dining Lounge'
+      },
+      'sect-feedback': {
+        url: 'https://images.unsplash.com/photo-1543007630-9710e4a00a20?auto=format&fit=crop&w=1920&q=80',
+        name: 'Warm Candlelit Dining Ambiance'
+      }
+    };
+
+    function setRestaurantBackground(sectId) {
+      const bg = SECTION_BACKGROUNDS[sectId] || SECTION_BACKGROUNDS['sect-dash'];
+      const bgElem = document.getElementById('dynamicBg');
+      if (bgElem) {
+        bgElem.style.backgroundImage = `url('${bg.url}')`;
+      }
+      const label = document.getElementById('ambianceLabel');
+      if (label) {
+        label.innerText = bg.name;
+      }
+    }
+
+    // --- LIVE CLOCK ---
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('liveClock').innerText = now.toLocaleTimeString();
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // --- TOAST NOTIFICATIONS ---
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      if (type === 'success') toast.style.borderLeftColor = '#10b981';
+      if (type === 'error') toast.style.borderLeftColor = '#f43f5e';
+      toast.innerText = message;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 3500);
+    }
+
+    // --- MODALS ---
+    function openModal(id) { document.getElementById(id).classList.add('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    // --- AUTH ---
+    function fillDemoCreds() {
+      document.getElementById('loginId').value = "owner@restaurant.com";
+      document.getElementById('loginPass').value = "password";
+      showToast("Credentials pre-filled!", "info");
+    }
+
+    function handleLogin(event) {
+      event.preventDefault();
+      document.getElementById("loginPage").classList.add("hidden");
+      document.getElementById("dashPage").classList.add("visible");
+      setRestaurantBackground('sect-dash');
+      showToast("Authenticated as Owner Admin", "success");
+    }
+
+    function handleLogout() {
+      document.getElementById("dashPage").classList.remove("visible");
+      document.getElementById("loginPage").classList.remove("hidden");
+    }
+
+    // --- THEME ---
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'neon' ? 'light' : current === 'light' ? 'dark' : 'neon';
+      document.documentElement.setAttribute('data-theme', next);
+      showToast(`Switched to ${next.toUpperCase()} theme`);
+    }
+
+    // --- SIDEBAR & DYNAMIC BACKGROUND NAVIGATION ---
+    function toggleSidebar() {
+      document.getElementById('mainSidebar').classList.toggle('collapsed');
+    }
+
+    function switchSection(sectId, navElem) {
+      document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+      if (navElem) {
+        navElem.classList.add('active');
+      } else {
+        const found = Array.from(document.querySelectorAll('.nav-item')).find(item => item.getAttribute('onclick').includes(sectId));
+        if (found) found.classList.add('active');
+      }
+
+      document.querySelectorAll('.section-content').forEach(s => s.classList.remove('active'));
+      const target = document.getElementById(sectId);
+      if (target) target.classList.add('active');
+
+      // Change restaurant photo with smooth transition
+      setRestaurantBackground(sectId);
+    }
+
+    // --- SEARCH FILTER ---
+    function handleSearch() {
+      const query = document.getElementById('globalSearch').value.toLowerCase();
+      document.querySelectorAll('.menu-card, .kanban-card, .metric-card').forEach(card => {
+        const text = card.innerText.toLowerCase();
+        card.style.display = text.includes(query) || query === '' ? '' : 'none';
+      });
+    }
+
+    // ================= API CALLS =================
+
+    // 1. Dashboard Stats
+    async function loadDashboardStats() {
+      try {
+        const res = await fetch(`${API_BASE}/stats`);
+        const data = await res.json();
+        document.getElementById('active-customers').innerText = data.active_customers;
+        document.getElementById('reservations-today').innerText = data.reservations_today;
+        document.getElementById('fulfilled-orders').innerText = data.fulfilled_orders;
+        document.getElementById('total-revenue').innerText = `₹${parseFloat(data.total_revenue).toFixed(2)}`;
+      } catch (err) { console.error(err); }
+    }
+
+    // 2. Kerala Menu
+    async function loadMenu() {
+      try {
+        const res = await fetch(`${API_BASE}/menu`);
+        allMenuItems = await res.json();
+        renderMenu(allMenuItems);
+      } catch (err) { console.error(err); }
+    }
+
+    function renderMenu(items) {
+      const container = document.getElementById('menu-container');
+      if (!container) return;
+      if (items.length === 0) {
+        container.innerHTML = `<p style="color:var(--text-muted); font-size:0.95rem;">No dishes found matching selection.</p>`;
+        return;
+      }
+      container.innerHTML = items.map(item => `
+        <div class="menu-card">
+          <div class="menu-img" style="background-image: url('${item.image_url || 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=400&q=80'}')">
+            <span class="menu-category-tag">${item.category_icon || '🍛'} ${item.category_name || 'Kerala Dish'}</span>
+          </div>
+          <div class="menu-body">
+            <div class="menu-title">${item.name}</div>
+            <div class="menu-desc">${item.description || ''}</div>
+            <div class="menu-footer">
+              <span class="menu-price">₹${parseFloat(item.price).toFixed(2)}</span>
+              <div style="display:flex; gap:0.4rem;">
+                <button class="btn btn-secondary" style="padding:0.35rem 0.8rem; font-size:0.75rem;" onclick="addToCart('${item.name.replace(/'/g, "\\'")}', ${item.price})">+ Add</button>
+                <button class="btn btn-secondary" style="padding:0.35rem 0.5rem; font-size:0.75rem; color:var(--accent-rose);" onclick="deleteMenuItem(${item.item_id})" title="Delete item">🗑️</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function filterMenuCategory(category, btn) {
+      document.querySelectorAll('.category-pills .pill').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      if (category === 'All') renderMenu(allMenuItems);
+      else renderMenu(allMenuItems.filter(i => (i.category_name || '').toLowerCase() === category.toLowerCase()));
+    }
+
+    async function deleteMenuItem(id) {
+      if (!confirm("Are you sure you want to remove this Kerala specialty?")) return;
+      try {
+        await fetch(`${API_BASE}/menu/${id}`, { method: 'DELETE' });
+        showToast("Dish removed from menu", "info");
+        loadMenu();
+      } catch (err) { console.error(err); }
+    }
+
+    async function submitNewMenuItem(form) {
+      const payload = {
+        name: document.getElementById('new-menu-name').value,
+        category_id: parseInt(document.getElementById('new-menu-category').value),
+        price: parseFloat(document.getElementById('new-menu-price').value),
+        description: document.getElementById('new-menu-desc').value,
+        image_url: document.getElementById('new-menu-img').value
+      };
+      try {
+        const res = await fetch(`${API_BASE}/menu`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          showToast("Kerala dish added to menu!", "success");
+          form.reset();
+          closeModal('addMenuModal');
+          loadMenu();
+          loadDashboardStats();
+        }
+      } catch (err) { console.error(err); }
+    }
+
+    // 3. Tables & Floor Map
+    async function loadTables() {
+      try {
+        const res = await fetch(`${API_BASE}/tables`);
+        const tables = await res.json();
+        const container = document.getElementById('tables-container');
+        if (!container) return;
+        container.innerHTML = tables.map(t => `
+          <div class="table-node ${t.status}" onclick="toggleTableStatus(${t.table_id}, '${t.status}')">
+            <strong style="display:block; font-size:1.15rem; margin-bottom:0.2rem;">${t.table_number}</strong>
+            <span class="badge badge-${t.status === 'available' ? 'emerald' : t.status === 'occupied' ? 'rose' : 'amber'}">${t.status}</span>
+            <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.4rem;">${t.floor_area || 'Main Hall'}</div>
+            <div style="font-size:0.75rem; color:var(--text-muted);">Capacity: ${t.capacity} Pax</div>
+          </div>
+        `).join('');
+      } catch (err) { console.error(err); }
+    }
+
+    async function toggleTableStatus(id, currentStatus) {
+      const newStatus = currentStatus === 'available' ? 'occupied' : currentStatus === 'occupied' ? 'reserved' : 'available';
+      try {
+        await fetch(`${API_BASE}/tables/${id}/status`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus })
+        });
+        loadTables();
+        loadDashboardStats();
+        showToast(`Table status updated to ${newStatus}`);
+      } catch (err) { console.error(err); }
+    }
+
+    // 4. Orders Kanban Pipeline
+    async function advanceOrderStatus(orderId, nextStatus) {
+      try {
+        await fetch(`${API_BASE}/orders/${orderId}/status`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: nextStatus })
+        });
+        loadOrders();
+        loadDashboardStats();
+        showToast(`Order #${orderId} moved to ${nextStatus}`, "success");
+      } catch (err) { console.error(err); }
+    }
+
+    async function loadOrders() {
+      try {
+        const res = await fetch(`${API_BASE}/orders`);
+        const orders = await res.json();
+
+        const incoming = orders.filter(o => o.status === 'incoming');
+        const preparing = orders.filter(o => o.status === 'preparing');
+        const delivered = orders.filter(o => o.status === 'delivered');
+
+        document.getElementById('count-incoming').innerText = incoming.length;
+        document.getElementById('count-preparing').innerText = preparing.length;
+        document.getElementById('count-delivered').innerText = delivered.length;
+
+        const renderCards = (arr) => arr.map(o => `
+          <div class="kanban-card" draggable="true" ondragstart="dragCard(event)" id="order-${o.order_id}" data-id="${o.order_id}">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+              <strong>Ticket #${o.order_id}</strong>
+              <span style="color:var(--text-muted); font-size:0.82rem;">${o.customer_name || 'Walk-in'} (${o.table_number || 'Table 1'})</span>
+            </div>
+            ${o.items && o.items.length > 0 ? `
+              <div class="order-items-badge-list">
+                ${o.items.map(it => `<span class="order-item-chip">${it.quantity}x ${it.name}</span>`).join('')}
+              </div>
+            ` : ''}
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.7rem;">
+              <span style="font-family:var(--font-heading); font-weight:800; font-size:1.15rem; color:#fbbf24;">₹${parseFloat(o.total_amount).toFixed(2)}</span>
+              <div class="order-card-actions">
+                ${o.status === 'incoming' ? `<button class="btn btn-secondary" style="padding:0.25rem 0.65rem; font-size:0.72rem;" onclick="advanceOrderStatus(${o.order_id}, 'preparing')">🍳 Prepare</button>` : ''}
+                ${o.status === 'preparing' ? `<button class="btn btn-emerald" style="padding:0.25rem 0.65rem; font-size:0.72rem;" onclick="advanceOrderStatus(${o.order_id}, 'delivered')">✅ Deliver</button>` : ''}
+              </div>
+            </div>
+          </div>
+        `).join('');
+
+        document.getElementById('col-incoming').innerHTML = renderCards(incoming);
+        document.getElementById('col-preparing').innerHTML = renderCards(preparing);
+        document.getElementById('col-delivered').innerHTML = renderCards(delivered);
+      } catch (err) { console.error(err); }
+    }
+
+    function dragCard(event) {
+      const id = event.target.getAttribute('data-id') || event.target.id.replace('order-', '');
+      event.dataTransfer.setData("text/plain", id);
+    }
+    function allowDrop(event) { event.preventDefault(); }
+
+    async function dropCard(event, newStatus) {
+      event.preventDefault();
+      const orderId = event.dataTransfer.getData("text/plain");
+      if (!orderId) return;
+
+      try {
+        await fetch(`${API_BASE}/orders/${orderId}/status`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus })
+        });
+        loadOrders();
+        showToast(`Order #${orderId} moved to ${newStatus}`, "success");
+      } catch (err) { console.error(err); }
+    }
+
+    // 5. Kitchen Inventory
+    async function loadInventory() {
+      try {
+        const res = await fetch(`${API_BASE}/inventory`);
+        const items = await res.json();
+        const list = document.getElementById('inventory-list');
+        if (!list) return;
+
+        list.innerHTML = items.map(i => {
+          const isLow = i.quantity <= i.reorder_level;
+          return `
+            <div style="padding:1rem 1.4rem; border:1px solid ${isLow ? 'rgba(244,63,94,0.45)' : 'var(--glass-border)'}; border-radius:16px; display:flex; justify-content:space-between; align-items:center; background:${isLow ? 'rgba(244,63,94,0.08)' : 'rgba(255,255,255,0.02)'}">
+              <div>
+                <strong style="font-size:1.05rem;">${i.item_name}</strong> ${isLow ? '<span class="badge badge-rose">⚠️ Low Stock</span>' : ''}<br/>
+                <small style="color:var(--text-muted)">Supplier: ${i.supplier_name || 'Agro Direct'} | Threshold: ${i.reorder_level} ${i.unit}</small>
+              </div>
+              <div style="display:flex; align-items:center; gap:0.6rem;">
+                <span style="font-family:var(--font-heading); font-size:1.3rem; font-weight:800; color:#fbbf24;">${i.quantity} ${i.unit}</span>
+                <button class="btn btn-secondary" style="padding:0.4rem 0.8rem; font-size:0.8rem;" onclick="openRestockModal(${i.inventory_id}, '${i.item_name.replace(/'/g, "\\'")}', '${i.unit}')">+ Restock</button>
+                <button class="btn btn-secondary" style="padding:0.4rem 0.6rem; font-size:0.8rem; color:var(--accent-rose);" onclick="deleteInventoryItem(${i.inventory_id})" title="Remove item">🗑️</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) { console.error(err); }
+    }
+
+    function openRestockModal(id, name, unit) {
+      activeRestockId = id;
+      document.getElementById('modal-restock-label').innerText = `Restocking: ${name} (${unit})`;
+      openModal('restockModal');
+    }
+
+    async function confirmRestock() {
+      if (!activeRestockId) return;
+      const quantity = parseInt(document.getElementById('modal-restock-qty').value);
+      try {
+        await fetch(`${API_BASE}/inventory/${activeRestockId}/restock`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ quantity })
+        });
+        closeModal('restockModal');
+        loadInventory();
+        loadReportsSummary();
+        showToast(`Added ${quantity} units to stock`, "success");
+      } catch (err) { console.error(err); }
+    }
+
+    async function deleteInventoryItem(id) {
+      if (!confirm("Remove this ingredient from stock tracking?")) return;
+      try {
+        await fetch(`${API_BASE}/inventory/${id}`, { method: 'DELETE' });
+        showToast("Item removed from inventory", "info");
+        loadInventory();
+        loadReportsSummary();
+      } catch (err) { console.error(err); }
+    }
+
+    async function addInventorySubmit(form) {
+      const payload = {
+        item_name: document.getElementById('inv-name').value,
+        quantity: parseInt(document.getElementById('inv-qty').value),
+        unit: document.getElementById('inv-unit').value,
+        reorder_level: parseInt(document.getElementById('inv-reorder').value),
+        supplier_id: document.getElementById('inv-supplier').value || null
+      };
+
+      try {
+        await fetch(`${API_BASE}/inventory`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        showToast('Inventory stock item registered', 'success');
+        form.reset();
+        loadInventory();
+        loadReportsSummary();
+      } catch (err) { console.error(err); }
+    }
+
+    // 6. Suppliers
+    async function loadSuppliers() {
+      try {
+        const res = await fetch(`${API_BASE}/suppliers`);
+        const suppliers = await res.json();
+        const list = document.getElementById('suppliers-list');
+        const select = document.getElementById('inv-supplier');
+
+        if (select) {
+          select.innerHTML = '<option value="">Select Agro Supplier...</option>' + 
+            suppliers.map(s => `<option value="${s.supplier_id}">${s.name}</option>`).join('');
+        }
+
+        if (list) {
+          list.innerHTML = suppliers.map(s => `
+            <div style="padding:1.4rem; border:1px solid var(--glass-border); border-radius:18px; background:rgba(255,255,255,0.02)">
+              <strong style="font-size:1.1rem; display:block; margin-bottom:0.3rem;">${s.name}</strong>
+              <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.6rem;">Contact: ${s.contact_person || 'N/A'}</p>
+              <div style="font-size:0.82rem; color:var(--text-muted); line-height:1.5;">
+                📞 ${s.phone}<br/>
+                ✉️ ${s.email || 'N/A'}<br/>
+                📍 ${s.address || 'Kerala'}
+              </div>
+            </div>
+          `).join('');
+        }
+      } catch (err) { console.error(err); }
+    }
+
+    async function addSupplierSubmit(form) {
+      const payload = {
+        name: document.getElementById('sup-name').value,
+        contact_person: document.getElementById('sup-contact').value,
+        phone: document.getElementById('sup-phone').value,
+        email: document.getElementById('sup-email').value,
+        address: document.getElementById('sup-address').value
+      };
+
+      try {
+        await fetch(`${API_BASE}/suppliers`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        showToast('Supplier registered successfully', 'success');
+        form.reset();
+        loadSuppliers();
+      } catch (err) { console.error(err); }
+    }
+
+    // 7. Bills & Tax Invoices
+    async function loadBills() {
+      try {
+        const res = await fetch(`${API_BASE}/bills`);
+        const bills = await res.json();
+        const list = document.getElementById('bills-list');
+        if (!list) return;
+
+        list.innerHTML = bills.map(b => `
+          <div style="padding:1.2rem 1.5rem; border:1px solid var(--glass-border); border-radius:16px; display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02)">
+            <div>
+              <strong style="font-size:1.05rem;">Invoice #${b.bill_id} (Order #${b.order_id})</strong> - ${b.customer_name}<br/>
+              <small style="color:var(--text-muted)">Payment: ${b.payment_method} | Status: <span class="badge badge-emerald">${b.payment_status}</span></small>
+            </div>
+            <div style="text-align:right">
+              <small style="color:var(--text-muted)">Subtotal: ₹${parseFloat(b.subtotal).toFixed(2)} + GST (5%): ₹${parseFloat(b.tax).toFixed(2)}</small>
+              <div style="font-family:var(--font-heading); font-size:1.35rem; font-weight:800; color:#fbbf24; margin-top:0.2rem;">₹${parseFloat(b.grand_total).toFixed(2)}</div>
+              <button class="btn btn-secondary" style="padding:0.3rem 0.75rem; font-size:0.75rem; margin-top:0.5rem;" onclick="viewReceipt(${b.bill_id})">🧾 View Receipt</button>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) { console.error(err); }
+    }
+
+    async function viewReceipt(billId) {
+      try {
+        const res = await fetch(`${API_BASE}/bills/${billId}`);
+        const b = await res.json();
+        const container = document.getElementById('receipt-content');
+        if (!container) return;
+
+        const dateStr = b.created_at || new Date().toLocaleString();
+        let itemsHtml = (b.items && b.items.length > 0)
+          ? b.items.map(it => `
+              <div style="display:flex; justify-content:space-between; margin-bottom:0.35rem;">
+                <span>${it.quantity}x ${it.name}</span>
+                <span>₹${(it.quantity * it.unit_price).toFixed(2)}</span>
+              </div>
+            `).join('')
+          : `<div style="color:var(--text-muted);">(Kerala Specialty Order Package)</div>`;
+
+        container.innerHTML = `
+          <div style="text-align:center; border-bottom:1px dashed var(--glass-border); padding-bottom:1rem; margin-bottom:1rem;">
+            <h3 style="font-family:var(--font-heading); margin-bottom:0.2rem; color:#fbbf24;">🍽️ MALABAR ROYAL PALACE</h3>
+            <p style="color:var(--text-muted); font-size:0.82rem; margin:0;">Heritage Flavors &amp; Fine Dining</p>
+            <p style="color:var(--text-muted); font-size:0.8rem; margin:0;">Beach Road, Calicut &amp; Panampilly, Kochi</p>
+            <p style="color:var(--text-muted); font-size:0.8rem; margin:0;">GSTIN: 32AABCR9876Q1Z8 | Tel: +91 98470-11000</p>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:0.82rem; color:var(--text-muted); margin-bottom:0.8rem;">
+            <span>Tax Invoice: #${b.bill_id}</span>
+            <span>Date: ${dateStr}</span>
+          </div>
+          <div style="font-size:0.85rem; margin-bottom:0.8rem;">
+            <strong>Guest:</strong> ${b.customer_name || 'Walk-in Guest'} | <strong>Order Ticket:</strong> #${b.order_id}
+          </div>
+          <div style="border-top:1px dashed var(--glass-border); border-bottom:1px dashed var(--glass-border); padding:0.8rem 0; margin-bottom:0.8rem;">
+            ${itemsHtml}
+          </div>
+          <div style="display:flex; flex-direction:column; gap:0.3rem; font-size:0.85rem;">
+            <div style="display:flex; justify-content:space-between;">
+              <span>Subtotal:</span><span>₹${parseFloat(b.subtotal).toFixed(2)}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between;">
+              <span>GST (5%):</span><span>₹${parseFloat(b.tax).toFixed(2)}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between;">
+              <span>Discount:</span><span>-₹${parseFloat(b.discount).toFixed(2)}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:1.2rem; font-weight:800; border-top:1px solid var(--glass-border); padding-top:0.6rem; margin-top:0.3rem;">
+              <span>Grand Total:</span><span style="color:#fbbf24;">₹${parseFloat(b.grand_total).toFixed(2)}</span>
+            </div>
+          </div>
+          <div style="text-align:center; margin-top:1.2rem; font-size:0.8rem; color:var(--text-muted);">
+            Mode: <strong>${b.payment_method}</strong> | Payment Status: <span class="badge badge-emerald">${b.payment_status}</span><br/>
+            Thank you for dining at Malabar Royal Palace! നന്ദി വീണ്ടും വരിക!
+          </div>
+        `;
+        openModal('receiptModal');
+      } catch (err) { console.error(err); }
+    }
+
+    // 8. Staff Roll
+    async function loadStaff() {
+      try {
+        const res = await fetch(`${API_BASE}/staff`);
+        const staff = await res.json();
+        const list = document.getElementById('staff-list');
+        if (!list) return;
+
+        list.innerHTML = staff.map(s => `
+          <div style="padding:1rem 1.4rem; border:1px solid var(--glass-border); border-radius:14px; display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02)">
+            <div>
+              <strong style="font-size:1.05rem;">${s.full_name}</strong> - <span style="color:var(--text-muted); font-size:0.85rem;">${s.role}</span><br/>
+              <small style="color:var(--text-muted)">📞 ${s.phone || 'N/A'}</small>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.8rem;">
+              <span style="font-family:var(--font-heading); font-weight:700; font-size:1.1rem; color:var(--accent-emerald);">₹${parseFloat(s.salary).toFixed(2)}/mo</span>
+              <button class="btn btn-secondary" style="padding:0.3rem 0.5rem; font-size:0.75rem; color:var(--accent-rose);" onclick="deleteStaffMember(${s.staff_id})">🗑️</button>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) { console.error(err); }
+    }
+
+    async function addStaffSubmit(form) {
+      const payload = {
+        full_name: document.getElementById('staff-name').value,
+        role: document.getElementById('staff-role').value,
+        phone: document.getElementById('staff-phone').value,
+        salary: document.getElementById('staff-salary').value
+      };
+
+      try {
+        await fetch(`${API_BASE}/staff`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        showToast('Staff member added to roll', 'success');
+        form.reset();
+        loadStaff();
+      } catch (err) { console.error(err); }
+    }
+
+    async function deleteStaffMember(id) {
+      if (!confirm("Remove this staff member from records?")) return;
+      try {
+        await fetch(`${API_BASE}/staff/${id}`, { method: 'DELETE' });
+        showToast("Staff member removed", "info");
+        loadStaff();
+      } catch (err) { console.error(err); }
+    }
+
+    // 9. Customers Directory
+    async function loadCustomers() {
+      try {
+        const res = await fetch(`${API_BASE}/customers`);
+        const customers = await res.json();
+        const list = document.getElementById('customers-list');
+        if (!list) return;
+
+        if (customers.length === 0) {
+          list.innerHTML = `<p style="color:var(--text-muted); font-size:0.9rem;">No registered customers yet.</p>`;
+          return;
+        }
+
+        list.innerHTML = customers.map(c => `
+          <div style="padding:1.2rem; border:1px solid var(--glass-border); border-radius:16px; background:rgba(255,255,255,0.02)">
+            <strong style="font-size:1.05rem; display:block; margin-bottom:0.3rem;">${c.name}</strong>
+            <div style="font-size:0.82rem; color:var(--text-muted); line-height:1.5;">
+              📞 ${c.phone}<br/>
+              ✉️ ${c.email || 'N/A'}<br/>
+              📍 ${c.address || 'N/A'}
+            </div>
+          </div>
+        `).join('');
+      } catch (err) { console.error(err); }
+    }
+
+    async function addCustomerSubmit(form) {
+      const payload = {
+        name: document.getElementById('cust-name').value,
+        phone: document.getElementById('cust-phone').value,
+        email: document.getElementById('cust-email').value,
+        address: document.getElementById('cust-address').value
+      };
+
+      try {
+        await fetch(`${API_BASE}/customers`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        showToast('Customer registered successfully', 'success');
+        form.reset();
+        loadCustomers();
+        loadDashboardStats();
+      } catch (err) { console.error(err); }
+    }
+
+    // 10. Feedback Sentiments
+    async function loadFeedback() {
+      try {
+        const res = await fetch(`${API_BASE}/feedback`);
+        const reviews = await res.json();
+        const list = document.getElementById('feedback-list');
+        if (!list) return;
+
+        list.innerHTML = reviews.map(r => `
+          <li style="border: 1px solid var(--glass-border); border-radius: 16px; padding: 1.2rem; background: rgba(255,255,255,0.02)">
+            <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+              <strong>${r.customer_name || 'Anonymous Guest'}</strong> 
+              <span style="color:#fbbf24">${'⭐'.repeat(r.rating || 5)}</span>
+            </div>
+            <p style="font-size: 0.9rem; color: var(--text-muted);">${r.comments}</p>
+          </li>
+        `).join('');
+      } catch (err) { console.error(err); }
+    }
+
+    async function submitFeedback(form) {
+      const payload = {
+        customer_name: document.getElementById('fb-name').value,
+        rating: parseInt(document.getElementById('fb-rating').value),
+        comments: document.getElementById('fb-comments').value
+      };
+      try {
+        const res = await fetch(`${API_BASE}/feedback`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          showToast("Dining feedback submitted!", "success");
+          form.reset();
+          loadFeedback();
+        }
+      } catch (err) { console.error(err); }
+    }
+
+    // 11. Business Analytics Summary & CSV Export (DBMS removed)
+    async function loadReportsSummary() {
+      try {
+        const res = await fetch(`${API_BASE}/reports/summary`);
+        const data = await res.json();
+
+        document.getElementById('rpt-revenue').innerText = `₹${parseFloat(data.total_revenue).toFixed(2)}`;
+        document.getElementById('rpt-bills').innerText = data.total_bills;
+        document.getElementById('rpt-items').innerText = allMenuItems.length || data.total_inventory_items;
+        document.getElementById('rpt-lowstock').innerText = data.low_stock_count;
+      } catch (err) { console.error(err); }
+    }
+
+    async function exportDataCSV() {
+      try {
+        const res = await fetch(`${API_BASE}/reports/export`);
+        const data = await res.json();
+
+        let csv = "DATA TYPE,ID,CUSTOMER/ITEM,AMOUNT/QTY,STATUS/DETAILS,DATE_TIME\n";
+        
+        data.bills.forEach(b => {
+          csv += `BILL,${b.bill_id},"${b.customer_name}",Rs ${b.grand_total},"${b.payment_method} - ${b.payment_status}",${b.created_at || ''}\n`;
+        });
+
+        data.orders.forEach(o => {
+          csv += `ORDER,${o.order_id},"${o.customer_name}",Rs ${o.total_amount},"${o.status}",${o.created_at || ''}\n`;
+        });
+
+        data.inventory.forEach(i => {
+          csv += `INVENTORY,${i.inventory_id},"${i.item_name}",${i.quantity} ${i.unit},"Threshold: ${i.reorder_level}",\n`;
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Malabar_Royal_Audit_Report_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast("Audit Report CSV downloaded successfully!", "success");
+      } catch (err) { console.error(err); }
+    }
+
+    async function reseedKeralaDemo() {
+      if (!confirm("Reseed database with fresh authentic Kerala cuisine demo records?")) return;
+      try {
+        const res = await fetch(`${API_BASE}/reset_kerala_demo`, { method: 'POST' });
+        if (res.ok) {
+          showToast("Kerala cuisine records re-initialized!", "success");
+          loadDashboardStats();
+          loadMenu();
+          loadTables();
+          loadOrders();
+          loadStaff();
+          loadCustomers();
+          loadFeedback();
+          loadInventory();
+          loadSuppliers();
+          loadBills();
+          loadReportsSummary();
+        }
+      } catch (err) { console.error(err); }
+    }
+
+    // --- CART CALCULATOR & BILL CHECKOUT ---
+    const basket = [];
+    function addToCart(name, price) {
+      const item = basket.find(i => i.name === name);
+      if (item) item.qty++;
+      else basket.push({ name, price, qty: 1 });
+      refreshCart();
+      showToast(`Added ${name} to cart`);
+    }
+
+    function removeProduct(name) {
+      const idx = basket.findIndex(i => i.name === name);
+      if (idx > -1) {
+        basket[idx].qty--;
+        if (basket[idx].qty === 0) basket.splice(idx, 1);
+      }
+      refreshCart();
+    }
+
+    function refreshCart() {
+      const container = document.getElementById("cart-list");
+      const label = document.getElementById("cart-total");
+
+      if (basket.length === 0) {
+        container.innerHTML = `<p style="color: var(--text-muted); font-size:0.85rem;">Cart is empty. Select Kerala dishes to bill.</p>`;
+        label.innerText = "₹0.00";
+        return;
+      }
+
+      let netCost = 0;
+      container.innerHTML = basket.map(i => {
+        const sub = i.price * i.qty;
+        netCost += sub;
+        return `
+          <div class="cart-item">
+            <div>
+              <strong style="font-size:0.9rem;">${i.name}</strong><br/>
+              <small style="color:var(--text-muted)">₹${i.price.toFixed(2)} x ${i.qty}</small>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.6rem;">
+              <span style="font-weight:700; color:#fbbf24;">₹${sub.toFixed(2)}</span>
+              <button class="btn btn-secondary" style="padding:0.2rem 0.4rem; font-size:0.75rem;" onclick="removeProduct('${i.name.replace(/'/g, "\\'")}')">🗑️</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      const gst = netCost * 0.05;
+      const grandTotal = netCost + gst;
+      label.innerText = `₹${grandTotal.toFixed(2)}`;
+    }
+
+    async function checkoutCart() {
+      if (basket.length === 0) {
+        showToast("The cart is empty.", "error");
+        return;
+      }
+
+      const custName = prompt("Enter Guest Name:", "Walk-in Guest") || "Walk-in Guest";
+      const tableNo = prompt("Enter Table Number (e.g. Table 1, Table 2):", "Table 1") || "Table 1";
+      const payMethod = prompt("Enter Payment Method (UPI / GPay, Cash, Credit Card):", "UPI / GPay") || "UPI / GPay";
+
+      try {
+        const res = await fetch(`${API_BASE}/bills/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customer_name: custName,
+            table_number: tableNo,
+            payment_method: payMethod,
+            discount: 0.0,
+            items: basket
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          alert(`🎉 Bill Invoice #${data.bill_id} Generated Successfully!\n\nTicket #${data.order_id} (${tableNo})\nCustomer: ${custName}\nSubtotal: ₹${data.subtotal.toFixed(2)}\nGST (5%): ₹${data.tax.toFixed(2)}\nGrand Total: ₹${data.grand_total.toFixed(2)}\nPayment: ${payMethod} (PAID)`);
+          basket.length = 0;
+          refreshCart();
+          loadOrders();
+          loadBills();
+          loadCustomers();
+          loadDashboardStats();
+          loadReportsSummary();
+          showToast("Order ticket generated & bill saved!", "success");
+        }
+      } catch (err) { console.error(err); }
+    }
+
+    // INITIAL LOAD
+    document.addEventListener("DOMContentLoaded", () => {
+      setRestaurantBackground('sect-dash');
+      loadDashboardStats();
+      loadMenu();
+      loadTables();
+      loadOrders();
+      loadStaff();
+      loadCustomers();
+      loadFeedback();
+      loadInventory();
+      loadSuppliers();
+      loadBills();
+      loadReportsSummary();
+    });
+  </script>
+</body>
+</html>
