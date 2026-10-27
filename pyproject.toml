@@ -1,2 +1,2 @@
 [tool.vercel]
-entrypoints:backend/app.py (variable: app)
+entrypoint = "restaurant.backend.app:app
